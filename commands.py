@@ -8,6 +8,8 @@ from session import SessionStore
 
 @dataclass
 class CommandContext:
+    # 命令处理所需的运行时上下文。
+    # REPL 主循环创建它，命令函数通过它操作 Engine、会话目录和当前模型。
     engine: Engine
     session_store: SessionStore
     session_dir: str
@@ -17,6 +19,8 @@ class CommandContext:
 
 @dataclass
 class CommandResult:
+    # 命令执行后的返回值。当前主要用于 /resume：
+    # 如果切换了会话，就把新的 SessionStore 交还给 app.py。
     handled: bool = True
     session_store: SessionStore | None = None
 
@@ -31,6 +35,7 @@ _COMMANDS: list[tuple[str, str]] = [
 
 
 def parse_command(text: str) -> tuple[str, str] | None:
+    """解析 slash command；普通用户输入返回 None，继续交给模型。"""
     text = text.strip()
     if not text.startswith("/"):
         return None
@@ -41,6 +46,7 @@ def parse_command(text: str) -> tuple[str, str] | None:
 def handle_command(name: str, args: str, ctx: CommandContext) -> CommandResult:
     # MAMBA2A: Slash command dispatch. REPL commands are handled here
     # before normal user input enters the model/tool loop.
+    # 新增命令时优先在这里挂入口，再把具体逻辑拆到 _cmd_xxx。
     if name == "help":
         _cmd_help()
         return CommandResult()
@@ -75,6 +81,8 @@ def _cmd_sessions(session_dir: str) -> None:
 
 
 def _cmd_resume(args: str, ctx: CommandContext) -> CommandResult:
+    # /resume 支持两种定位方式：数字序号，或 session_id 前缀。
+    # 找到后把历史消息装回 Engine，并把持久化目标切到旧 session。
     sessions = SessionStore.list_sessions(ctx.session_dir)
     if not sessions:
         print("[resume] no saved sessions")

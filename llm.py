@@ -118,6 +118,8 @@ class LLMClient:
         tools: list[dict[str, Any]] | None = None,
         effort: str | None = None,
     ) -> LLMMessage:
+        # 非流式请求入口。目前主要给后续 compact/摘要类能力使用；
+        # 普通对话主流程走 stream_messages()。
         if self.provider == _OPENAI_PROVIDER:
             return self._openai_create_message(
                 model=model,
@@ -149,6 +151,7 @@ class LLMClient:
     ):
         # MAMBA5A: Provider adapter. Engine calls this once per model step;
         # this method hides Anthropic/OpenAI/mock streaming differences.
+        # 对 Engine 来说，三种 provider 都表现成同一种 stream 接口。
         if self.provider == _OPENAI_PROVIDER:
             return _OpenAIStream(
                 client=self._client,

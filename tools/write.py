@@ -6,6 +6,8 @@ from .base import Tool, ToolResult
 
 
 class WriteTool(Tool):
+    # 完整写入工具：适合创建新文件或整文件重写。
+    # 修改已有文件时通常优先用 Edit，因为 Edit 更小、更容易审查。
     name = "Write"
     description = "Write complete text content to a file, creating parent directories when needed."
     input_schema = {
@@ -25,6 +27,8 @@ class WriteTool(Tool):
         return f"Writing {file_path}" if file_path else "Writing file"
 
     def execute(self, **kwargs):
+        # Write 是有副作用的工具，权限层会在执行前询问用户。
+        # 这里会自动创建父目录，然后把 content 整体写入目标文件。
         file_path = kwargs.get("file_path", "")
         content = kwargs.get("content", "")
         if not file_path:

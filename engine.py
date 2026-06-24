@@ -81,6 +81,8 @@ class Engine:
             self._turn_start_len = None
 
     def submit(self, user_input: str | list) -> Iterator[tuple]:
+        # 这是 Fireseed 的 agent 主循环入口。
+        # 调用方通过迭代这个 generator 接收 text/tool_call/tool_result 等事件。
         # MAMBA4: Turn start. Add the user's message to conversation state
         # and persist it before asking the model what to do next.
         self._aborted = False
@@ -99,6 +101,7 @@ class Engine:
                     try:
                         # MAMBA5: Model request. Send system prompt, tools schema,
                         # and all messages; stream text first, then inspect final blocks.
+                        # 如果模型返回 tool_use，下面不会结束本轮，而是进入工具执行阶段。
                         with self._client.stream_messages(
                             model=self._model,
                             max_tokens=self._max_tokens,
@@ -171,10 +174,12 @@ class Engine:
                 self._persist(self._messages[-1])
 
                 if not tool_uses:
+                    # 没有工具调用，说明模型已经给出最终回答，本轮结束。
                     break
                # 第2波新增功能，并发处理可读工具
                 # MAMBA7: Tool planning. Split model tool_use blocks into safe
                 # batches: adjacent read-only tools may run together; writes run in order.
+                # 关键原则：只读工具可并发；有副作用工具必须保持模型给出的顺序。
                 tool_results = []
                 batches: list[tuple[bool, list[Any]]] = []
                 for tu in tool_uses:
@@ -276,6 +281,8 @@ class Engine:
             raise
 
     def _execute_tool(self, tool_name: str, inputs: dict) -> ToolResult:
+        # 工具执行保护层：未知工具和异常都会转成 ToolResult，
+        # 避免异常直接打断整个 agent 循环。
         tool = self._tools.get(tool_name)
         if tool is None:
             return ToolResult(content=f"Unknown tool: {tool_name}", is_error=True)

@@ -6,6 +6,8 @@ from .base import Tool, ToolResult
 
 
 class EditTool(Tool):
+    # 精确替换工具：适合修改已有文件的一小段内容。
+    # 为了避免误改，默认要求 old_string 在文件里只出现一次。
     name = "Edit"
     description = (
         "Perform an exact string replacement in a text file. "
@@ -31,6 +33,8 @@ class EditTool(Tool):
         return f"Editing {file_path}" if file_path else "Editing file"
 
     def execute(self, **kwargs):
+        # 执行顺序：校验参数 -> 读文件 -> 检查匹配次数 -> 写回新内容。
+        # 所有检查都通过后才发生磁盘写入。
         file_path = kwargs.get("file_path", "")
         old_string = kwargs.get("old_string", "")
         new_string = kwargs.get("new_string", "")
