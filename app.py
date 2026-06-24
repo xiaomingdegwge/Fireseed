@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 from commands import CommandContext, handle_command, parse_command
+from compact import CompactService
 from config import load_app_config
 from context import build_system_prompt
 from engine import AbortedError, Engine
@@ -293,6 +294,7 @@ def main() -> None:
         effort=cfg.effort,
         session_store=session_store,
     )
+    compact_service = CompactService(engine._client, model=cfg.model, effort=cfg.effort)
 
     if args.resume:
         sessions = SessionStore.list_sessions(cfg.session_dir)
@@ -339,13 +341,13 @@ def main() -> None:
         "cc-dup-mini started | "
         f"provider={cfg.provider} | model={cfg.model} | session={session_store.session_id}"
     )
-    print("Esc cancels turn (TTY). Commands: /help /sessions /resume /clear . Type 'exit' to quit.")
+    print("Esc cancels turn (TTY). Commands: /help /sessions /resume /compact /clear . Type 'exit' to quit.")
 
     while True:
         # MAMBA2: REPL entry. Each normal user input flows into run_query(),
         # then Engine.submit() drives the agent/tool loop.
         try:
-            user_input = input("\n> ").strip()
+            user_input = input("\n> ").strip() #等待输入内容
         except EOFError:
             print("\nGoodbye.")
             break
@@ -360,6 +362,7 @@ def main() -> None:
             print("Goodbye.")
             break
 
+        #轻量 slash command 系统 解析slash command
         command = parse_command(user_input)
         if command is not None:
             command_ctx = CommandContext(
@@ -368,6 +371,7 @@ def main() -> None:
                 session_dir=cfg.session_dir,
                 cwd=cwd,
                 model=cfg.model,
+                compact_service=compact_service,
             )
             result = handle_command(command[0], command[1], command_ctx)
             if result.session_store is not None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from compact import CompactService, estimate_tokens
 from engine import Engine
 from session import SessionStore
 
@@ -15,6 +16,7 @@ class CommandContext:
     session_dir: str
     cwd: str
     model: str
+    compact_service: CompactService | None = None
 
 
 @dataclass
@@ -30,6 +32,7 @@ _COMMANDS: list[tuple[str, str]] = [
     ("sessions", "List saved sessions"),
     ("history", "Alias for /sessions"),
     ("resume <id|number>", "Resume a saved session"),
+    ("compact [note]", "Summarize older context and keep recent messages"),
     ("clear", "Clear in-memory conversation"),
 ]
 
@@ -55,6 +58,8 @@ def handle_command(name: str, args: str, ctx: CommandContext) -> CommandResult:
         return CommandResult()
     if name == "resume":
         return _cmd_resume(args, ctx)
+    if name == "compact":
+        return _cmd_compact(args, ctx)
     if name == "clear":
         ctx.engine.set_messages([])
         print("[clear] conversation reset in memory (session file unchanged)")
@@ -123,3 +128,34 @@ def _cmd_resume(args: str, ctx: CommandContext) -> CommandResult:
     ctx.engine.set_session_store(new_store)
     print(f"[resume] loaded session {target.session_id} ({len(messages)} messages)")
     return CommandResult(session_store=new_store)
+
+
+def _cmd_compact(args: str, ctx: CommandContext) -> CommandResult:
+    if ctx.compact_service is None:
+        print("[compact] compact service is not configured")
+        return CommandResult()
+
+    messages = ctx.engine.get_messages()
+    if len(messages) <= 6:
+        print("[compact] too few messages to compact")
+        return CommandResult()
+
+    before_tokens = estimate_tokens(messages)
+    before_count = len(messages)
+    print(f"[compact] summarizing {before_count} messages (~{before_tokens} tokens)")
+
+    try:
+        new_messages, _summary = ctx.compact_service.compact(messages, custom_instructions=args)
+    except Exception as exc:
+        print(f"[compact] failed: {exc}")
+        return CommandResult()
+
+    ctx.engine.set_messages(new_messages) #压缩后的信息
+    ctx.session_store.replace_messages(new_messages) #更新会话文件中的消息
+
+    after_tokens = estimate_tokens(new_messages)
+    print(
+        f"[compact] done: {before_count} -> {len(new_messages)} messages, "
+        f"~{before_tokens} -> ~{after_tokens} tokens"
+    )
+    return CommandResult()

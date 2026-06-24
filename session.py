@@ -29,6 +29,11 @@ class SessionStore:
         with self._messages_file.open("a", encoding="utf-8") as handle:
             handle.write(line + "\n")
 
+    def replace_messages(self, messages: list[dict[str, Any]]) -> None:
+        with self._messages_file.open("w", encoding="utf-8") as handle:
+            for message in messages:
+                handle.write(json.dumps(message, ensure_ascii=False) + "\n")
+
     @staticmethod #第2波新增功能，恢复会话功能，列出所有会话
     def list_sessions(session_dir: str) -> list[SessionMeta]:
         base = Path(session_dir)

@@ -17,7 +17,7 @@ preserving the original learning-oriented commit history.
 - `load_dotenv()` (`.env` in cwd) + `~/.bashrc` key fallbacks
 - Rich status spinner + **Esc to cancel** (TTY) when not using `--plain`
 - `build_system_prompt` with working directory
-- `/help`, `/clear`, `/sessions`, `/history`, and `/resume` slash commands
+- `/help`, `/clear`, `/sessions`, `/history`, `/resume`, and `/compact` slash commands
 - `Glob` tool (read-only, can run in parallel with other read-only tools)
 
 ## Quick Start
@@ -131,4 +131,5 @@ The engine will emit tool events, execute the tool, feed `tool_result` back to t
 - `/sessions` : list local saved sessions
 - `/history` : alias for `/sessions`
 - `/resume <number|prefix>` : resume a saved session inside the REPL
+- `/compact [extra instructions]` : summarize older context and keep recent messages
 - `/clear` : reset in-memory messages
