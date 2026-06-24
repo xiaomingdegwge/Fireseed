@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+from cost_tracker import CostTracker
 from llm import LLMClient
 from permissions import PermissionChecker
 from session import SessionStore
@@ -31,6 +32,7 @@ class Engine:
         base_url: str | None = None,
         effort: str | None = None,
         session_store: SessionStore | None = None,
+        cost_tracker: CostTracker | None = None,
     ):
         self._tools = {tool.name: tool for tool in tools}
         self._system_prompt = system_prompt
@@ -44,6 +46,7 @@ class Engine:
         self._aborted = False
         self._active_stream = None
         self._turn_start_len: int | None = None
+        self._cost_tracker = cost_tracker
 
     def _persist(self, message: dict[str, Any]) -> None:
         if self._session_store is not None:
@@ -123,6 +126,10 @@ class Engine:
                             final = stream.get_final_message()
                             usage = getattr(final, "usage", None)
                             if usage is not None:
+                                if self._cost_tracker is not None:
+                                    # MAMBA5B: Usage accounting. 模型返回 usage 后，
+                                    # 先累计到 CostTracker，再把 usage 事件交给 UI。
+                                    self._cost_tracker.add_usage(self._model, _usage_to_dict(usage))
                                 yield ("usage", usage)
                             for block in final.content:
                                 if _block_type(block) == "tool_use":
@@ -322,3 +329,12 @@ def _block_input(block: Any) -> dict:
     else:
         raw = getattr(block, "input", {})
     return raw if isinstance(raw, dict) else {}
+
+
+def _usage_to_dict(usage: Any) -> dict[str, int]:
+    return {
+        "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+        "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+        "cache_read_input_tokens": int(getattr(usage, "cache_read_input_tokens", 0) or 0),
+        "cache_creation_input_tokens": int(getattr(usage, "cache_creation_input_tokens", 0) or 0),
+    }

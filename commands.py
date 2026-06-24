@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from compact import CompactService, estimate_tokens
+from cost_tracker import CostTracker
 from engine import Engine
 from session import SessionStore
 
@@ -17,6 +18,7 @@ class CommandContext:
     cwd: str
     model: str
     compact_service: CompactService | None = None
+    cost_tracker: CostTracker | None = None
 
 
 @dataclass
@@ -33,6 +35,7 @@ _COMMANDS: list[tuple[str, str]] = [
     ("history", "Alias for /sessions"),
     ("resume <id|number>", "Resume a saved session"),
     ("compact [note]", "Summarize older context and keep recent messages"),
+    ("cost", "Show token usage and estimated cost"),
     ("clear", "Clear in-memory conversation"),
 ]
 
@@ -60,6 +63,8 @@ def handle_command(name: str, args: str, ctx: CommandContext) -> CommandResult:
         return _cmd_resume(args, ctx)
     if name == "compact":
         return _cmd_compact(args, ctx)
+    if name == "cost":
+        return _cmd_cost(ctx)
     if name == "clear":
         ctx.engine.set_messages([])
         print("[clear] conversation reset in memory (session file unchanged)")
@@ -158,4 +163,12 @@ def _cmd_compact(args: str, ctx: CommandContext) -> CommandResult:
         f"[compact] done: {before_count} -> {len(new_messages)} messages, "
         f"~{before_tokens} -> ~{after_tokens} tokens"
     )
+    return CommandResult()
+
+
+def _cmd_cost(ctx: CommandContext) -> CommandResult:
+    if ctx.cost_tracker is None:
+        print("[cost] cost tracker is not configured")
+        return CommandResult()
+    print(ctx.cost_tracker.format_cost())
     return CommandResult()

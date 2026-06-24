@@ -9,6 +9,7 @@ from commands import CommandContext, handle_command, parse_command
 from compact import CompactService
 from config import load_app_config
 from context import build_system_prompt
+from cost_tracker import CostTracker
 from engine import AbortedError, Engine
 from permissions import PermissionChecker
 from session import SessionStore
@@ -277,6 +278,7 @@ def main() -> None:
     cwd = str(Path.cwd())
     tools = [ReadTool(), EditTool(), WriteTool(), GlobTool(), GrepTool(), BashTool()]
     permissions = PermissionChecker(auto_approve=cfg.auto_approve)
+    cost_tracker = CostTracker()
     session_store = SessionStore(
         cwd=cwd,
         model=cfg.model,
@@ -293,6 +295,7 @@ def main() -> None:
         max_tokens=cfg.max_tokens,
         effort=cfg.effort,
         session_store=session_store,
+        cost_tracker=cost_tracker,
     )
     compact_service = CompactService(engine._client, model=cfg.model, effort=cfg.effort)
 
@@ -341,7 +344,7 @@ def main() -> None:
         "cc-dup-mini started | "
         f"provider={cfg.provider} | model={cfg.model} | session={session_store.session_id}"
     )
-    print("Esc cancels turn (TTY). Commands: /help /sessions /resume /compact /clear . Type 'exit' to quit.")
+    print("Esc cancels turn (TTY). Commands: /help /sessions /resume /compact /cost /clear . Type 'exit' to quit.")
 
     while True:
         # MAMBA2: REPL entry. Each normal user input flows into run_query(),
@@ -372,6 +375,7 @@ def main() -> None:
                 cwd=cwd,
                 model=cfg.model,
                 compact_service=compact_service,
+                cost_tracker=cost_tracker,
             )
             result = handle_command(command[0], command[1], command_ctx)
             if result.session_store is not None:
