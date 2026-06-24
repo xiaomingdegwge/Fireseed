@@ -1,6 +1,8 @@
-# CC_DUP Minimal Runnable Template
+# Fireseed
 
-This folder contains a minimal, runnable clone of the core loop used in `cc-mini`:
+Fireseed is a minimal, runnable clone of the core loop used in `cc-mini`.
+It was split out from `cc-mini/docs/CC_DUP` into its own repository while
+preserving the original learning-oriented commit history.
 
 - REPL input loop
 - Engine turn loop (`assistant -> tool_use -> tool_result -> assistant`)
@@ -21,43 +23,43 @@ This folder contains a minimal, runnable clone of the core loop used in `cc-mini
 ## Quick Start
 
 ```bash
-python docs/CC_DUP/app.py --provider anthropic
+python3 app.py --provider anthropic
 ```
 
 Run single prompt:
 
 ```bash
-python docs/CC_DUP/app.py --provider anthropic --print "hello"
+python3 app.py --provider anthropic --print "hello"
 ```
 
 Resume from a previous session:
 
 ```bash
-python docs/CC_DUP/app.py --provider anthropic --resume 1
+python3 app.py --provider anthropic --resume 1
 ```
 
 or by prefix:
 
 ```bash
-python docs/CC_DUP/app.py --provider anthropic --resume 20260413
+python3 app.py --provider anthropic --resume 20260413
 ```
 
 Enable all write/bash approvals:
 
 ```bash
-python docs/CC_DUP/app.py --provider anthropic --auto-approve
+python3 app.py --provider anthropic --auto-approve
 ```
 
 Mock mode (no network):
 
 ```bash
-python docs/CC_DUP/app.py --provider mock
+python3 app.py --provider mock
 ```
 
 Interactive REPL without Rich spinner (plain text only):
 
 ```bash
-python docs/CC_DUP/app.py --provider anthropic --plain
+python3 app.py --provider anthropic --plain
 ```
 
 Create a `.env` in the project root or cwd (same convention as cc-mini):
@@ -66,6 +68,9 @@ Create a `.env` in the project root or cwd (same convention as cc-mini):
 ANTHROPIC_API_KEY=...
 # or ANTHROPIC_AUTH_TOKEN + ANTHROPIC_BASE_URL for compatible endpoints
 ```
+
+Note: the first migrated version still accepts the `CC_DUP_*` environment
+variable names for compatibility with the teaching code it was split from.
 
 ## API Key Resolution Order
 
