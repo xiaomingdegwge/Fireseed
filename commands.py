@@ -40,6 +40,11 @@ _COMMANDS: list[tuple[str, str]] = [
 ]
 
 
+def command_specs() -> list[tuple[str, str]]:
+    """给 help、补全等 UI 层复用的 slash command 清单。"""
+    return list(_COMMANDS)
+
+
 def parse_command(text: str) -> tuple[str, str] | None:
     """解析 slash command；普通用户输入返回 None，继续交给模型。"""
     text = text.strip()
@@ -77,7 +82,7 @@ def handle_command(name: str, args: str, ctx: CommandContext) -> CommandResult:
 
 def _cmd_help() -> None:
     print("Available commands:")
-    for name, description in _COMMANDS:
+    for name, description in command_specs():
         print(f"  /{name:<18} {description}")
 
 

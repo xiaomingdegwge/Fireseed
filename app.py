@@ -11,6 +11,7 @@ from config import load_app_config
 from context import build_system_prompt
 from cost_tracker import CostTracker
 from engine import AbortedError, Engine
+from input_ui import build_prompt_session, has_prompt_toolkit, read_user_input
 from permissions import PermissionChecker
 from session import SessionStore
 from tools import BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
@@ -394,13 +395,18 @@ def main() -> None:
         "cc-dup-mini started | "
         f"provider={cfg.provider} | model={cfg.model} | session={session_store.session_id}"
     )
-    print("Esc cancels turn (TTY). Commands: /help /sessions /resume /compact /cost /clear . Type 'exit' to quit.")
+    input_note = "history/completion on, Alt+Enter newline" if has_prompt_toolkit() else "basic input"
+    print(
+        "Esc cancels turn (TTY). Commands: /help /sessions /resume /compact /cost /clear . "
+        f"Input: {input_note}. Type 'exit' to quit."
+    )
+    prompt_session = build_prompt_session()
 
     while True:
         # MAMBA2: REPL entry. Each normal user input flows into run_query(),
         # then Engine.submit() drives the agent/tool loop.
         try:
-            user_input = input("\n> ").strip() #等待输入内容
+            user_input = read_user_input(prompt_session) #等待输入内容
         except EOFError:
             print("\nGoodbye.")
             break

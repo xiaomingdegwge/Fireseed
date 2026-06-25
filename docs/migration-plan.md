@@ -18,6 +18,7 @@ Fireseed 已迁入：
 - 自动 compact：根据最新 usage 或估算 token 接近上下文窗口时触发
 - 基础 pytest 覆盖：tools、commands、compact、cost、config
 - 配置系统增强：TOML、模型 alias、模型默认 max tokens、provider 分节
+- prompt_toolkit 输入体验：历史记录、slash 补全、Alt+Enter 多行输入
 - API retry
 - 只读工具并发
 - Rich spinner + Esc cancel
@@ -28,15 +29,14 @@ Fireseed 已迁入：
 
 | 顺序 | 功能 | 迁入原因 | 主要依赖 |
 |---|---|---|---|
-| 1 | prompt_toolkit 输入体验 | 命令历史、slash autocomplete、多行输入、边框输入会明显提升日常使用体验 | 命令系统 |
-| 2 | Sandbox | Bash 是高风险工具，隔离和安全策略是核心能力 | 配置系统、权限系统 |
-| 3 | Skills 基础系统 | `/review`、`/commit`、`/test`、`/simplify` 是高频工作流，比高级 agent 更实用 | 命令系统、Edit/Write/Bash |
-| 4 | AskUserQuestion 工具 | 让模型能主动澄清需求，是更接近 Claude Code 的交互能力 | prompt_toolkit 更佳 |
-| 5 | Plan Mode | 支持计划/执行分离，适合复杂任务；需要交互式澄清和权限限制配合 | AskUserQuestion、权限系统 |
-| 6 | 媒体输入 `@path` | 支持图片/文件块输入，增强模型上下文能力 | LLM content block 支持 |
-| 7 | Coordinator / Agent / WorkerManager | 多 worker 并行任务系统能力强，但复杂度高 | Skills、权限、会话更稳定后 |
-| 8 | Memory / KAIROS | 跨会话记忆和自动整理，属于长期增强能力 | 配置系统、session |
-| 9 | Buddy | 有产品个性，但不是 Fireseed 当前学习主线的核心 | 可独立迁 |
+| 1 | Sandbox | Bash 是高风险工具，隔离和安全策略是核心能力 | 配置系统、权限系统 |
+| 2 | Skills 基础系统 | `/review`、`/commit`、`/test`、`/simplify` 是高频工作流，比高级 agent 更实用 | 命令系统、Edit/Write/Bash |
+| 3 | AskUserQuestion 工具 | 让模型能主动澄清需求，是更接近 Claude Code 的交互能力 | prompt_toolkit 更佳 |
+| 4 | Plan Mode | 支持计划/执行分离，适合复杂任务；需要交互式澄清和权限限制配合 | AskUserQuestion、权限系统 |
+| 5 | 媒体输入 `@path` | 支持图片/文件块输入，增强模型上下文能力 | LLM content block 支持 |
+| 6 | Coordinator / Agent / WorkerManager | 多 worker 并行任务系统能力强，但复杂度高 | Skills、权限、会话更稳定后 |
+| 7 | Memory / KAIROS | 跨会话记忆和自动整理，属于长期增强能力 | 配置系统、session |
+| 8 | Buddy | 有产品个性，但不是 Fireseed 当前学习主线的核心 | 可独立迁 |
 
 ## 推荐分批
 
@@ -60,9 +60,9 @@ Fireseed 已迁入：
 - [x] TOML 配置加载
 - [x] 模型别名和默认 max tokens
 - [x] provider 分节配置和 `--config`
-- prompt_toolkit 历史记录
-- slash command autocomplete
-- 多行输入
+- [x] prompt_toolkit 历史记录
+- [x] slash command autocomplete
+- [x] 多行输入
 
 ### 第三批：Sandbox + Skills
 
@@ -101,16 +101,16 @@ Fireseed 已迁入：
 
 ## 下一步建议
 
-下一步优先迁入 **prompt_toolkit 输入体验**。
+下一步优先迁入 **Sandbox**。
 
 原因：
 
-- 基础测试和配置系统已经补齐
-- 输入体验是日常使用 Fireseed 最直接的增强
-- prompt_toolkit 会给后续 AskUserQuestion / Plan Mode 提供更好的交互底座
+- Bash 是当前最高风险工具
+- 配置系统已经补齐，适合承接 sandbox 配置
+- Sandbox 会直接提升真实 coding assistant 的安全边界
 
 建议提交粒度：
 
-1. 迁入 prompt_toolkit 历史记录和自动补全。
-2. 支持多行输入。
-3. 再进入 Sandbox。
+1. 迁入 sandbox 配置 dataclass 和 TOML 解析。
+2. 迁入命令包装 / checker。
+3. 将 BashTool 接入 sandbox 与权限逻辑。
