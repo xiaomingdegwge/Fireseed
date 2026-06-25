@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 from commands import CommandContext, handle_command, parse_command
-from compact import CompactService
+from compact import CompactService, estimate_tokens, should_compact
 from config import load_app_config
 from context import build_system_prompt
 from cost_tracker import CostTracker
@@ -236,6 +236,55 @@ def run_query(
         console.print()
 
 
+def _maybe_auto_compact(
+    engine: Engine,
+    compact_service: CompactService,
+    session_store: SessionStore,
+    cost_tracker: CostTracker,
+    *,
+    model: str,
+    use_rich: bool,
+) -> None:
+    """交互轮次后的自动 compact 入口。
+
+    这里是 MAMBA2C：普通用户输入完成后，根据最新 usage 或估算 token
+    判断是否接近上下文窗口；触发后复用 /compact 的压缩服务并刷新 session。
+    """
+    messages = engine.get_messages()
+    if not should_compact(messages, model=model, last_input_tokens=cost_tracker.last_input_tokens):
+        return
+
+    before_count = len(messages)
+    before_tokens = estimate_tokens(messages)
+    if _HAS_RICH and use_rich: # 富文本，带颜色，非纯文本 plain
+        console = Console(highlight=False)
+        console.print("[dim]Auto-compacting conversation...[/dim]")
+    else:
+        print("[auto-compact] compacting conversation...")
+
+    try:
+        new_messages, _summary = compact_service.compact(messages)
+    except Exception as exc:
+        if _HAS_RICH and use_rich:
+            Console(highlight=False).print(f"[dim red]Auto-compact failed: {exc}[/dim red]")
+        else:
+            print(f"[auto-compact] failed: {exc}")
+        return
+
+    engine.set_messages(new_messages)
+    session_store.replace_messages(new_messages)
+
+    after_tokens = estimate_tokens(new_messages)
+    message = (
+        f"Auto-compact done: {before_count} -> {len(new_messages)} messages, "
+        f"~{before_tokens} -> ~{after_tokens} tokens."
+    )
+    if _HAS_RICH and use_rich:
+        Console(highlight=False).print(f"[dim]{message}[/dim]")
+    else:
+        print(f"[auto-compact] {message}")
+
+
 class _null_context:
     def __enter__(self):
         return self
@@ -389,6 +438,14 @@ def main() -> None:
             permissions=permissions,
             use_rich=use_rich,
             use_esc=True,
+        )
+        _maybe_auto_compact(
+            engine,
+            compact_service,
+            session_store,
+            cost_tracker,
+            model=cfg.model,
+            use_rich=use_rich,
         )
 
 

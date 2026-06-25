@@ -5,8 +5,26 @@ from typing import Any
 from llm import LLMClient
 
 CHARS_PER_TOKEN = 4
+COMPACT_THRESHOLD_TOKENS = 100_000
 MIN_RECENT_MESSAGES = 6
+MIN_RECENT_TOKENS = 10_000
 COMPACT_MAX_OUTPUT_TOKENS = 2048
+AUTOCOMPACT_BUFFER_TOKENS = 13_000  # token 统计不是永远精确可控的 误差值
+
+_CONTEXT_WINDOWS: list[tuple[str, int]] = [
+    ("claude-opus-4-6", 1_000_000),
+    ("claude-opus-4-5", 1_000_000),
+    ("claude-opus-4", 200_000),
+    ("claude-sonnet-4-6", 1_000_000),
+    ("claude-sonnet-4-5", 1_000_000),
+    ("claude-sonnet-4", 200_000),
+    ("claude-sonnet", 200_000),
+    ("claude-3-7-sonnet", 200_000),
+    ("claude-3-5-sonnet", 200_000),
+    ("claude-haiku-4-5", 200_000),
+    ("claude-3-5-haiku", 200_000),
+]
+_DEFAULT_CONTEXT_WINDOW = 200_000
 
 COMPACT_SYSTEM = "You are a careful conversation summarizer."
 COMPACT_PROMPT = """\
@@ -24,6 +42,35 @@ Be concise but specific.
 
 def estimate_tokens(messages: list[dict[str, Any]]) -> int:
     return sum(len(_text_of(message.get("content", ""))) for message in messages) // CHARS_PER_TOKEN
+
+#查询此模型上下文窗口大小值
+def _context_window_for_model(model: str) -> int:
+    model_lower = model.lower()
+    for prefix, window in _CONTEXT_WINDOWS:
+        if prefix in model_lower:
+            return window
+    return _DEFAULT_CONTEXT_WINDOW
+
+
+def _auto_compact_threshold(model: str) -> int:
+    context_window = _context_window_for_model(model)
+    max_output_reserve = min(20_000, context_window // 5) #给模型“本轮回答”预留的输出空间（压缩本身输出）
+    return context_window - max_output_reserve - AUTOCOMPACT_BUFFER_TOKENS
+
+
+def should_compact(
+    messages: list[dict[str, Any]],
+    model: str | None = None,
+    last_input_tokens: int | None = None,
+) -> bool:
+    """判断是否需要自动压缩上下文。
+
+    优先使用 API 返回的 input_tokens 做模型窗口判断；没有 usage 时，
+    退回到字符估算，保证 mock 或兼容端也能触发保护。
+    """
+    if model and last_input_tokens:
+        return last_input_tokens >= _auto_compact_threshold(model) #本轮发给模型的输入（总的） token 数”已经接近该模型的上下文窗口上限时，就触发自动 compact
+    return estimate_tokens(messages) > COMPACT_THRESHOLD_TOKENS
 
 
 class CompactService:
@@ -80,7 +127,17 @@ def _split_recent(messages: list[dict[str, Any]]) -> tuple[list[dict[str, Any]],
     if len(messages) <= MIN_RECENT_MESSAGES:
         return [], list(messages)
 
-    keep_start = max(0, len(messages) - MIN_RECENT_MESSAGES)
+    keep_start = len(messages)
+    kept_tokens = 0
+    kept_messages = 0
+
+    for index in range(len(messages) - 1, -1, -1):
+        kept_tokens += len(_text_of(messages[index].get("content", ""))) // CHARS_PER_TOKEN
+        kept_messages += 1
+        keep_start = index
+        if kept_messages >= MIN_RECENT_MESSAGES and kept_tokens >= MIN_RECENT_TOKENS:
+            break
+
     if keep_start > 0:
         first_recent = messages[keep_start]
         content = first_recent.get("content", "")
