@@ -22,8 +22,20 @@ preserving the original learning-oriented commit history.
 
 ## Quick Start
 
+Install locally for development:
+
+```bash
+python3 -m pip install -e ".[dev]"
+```
+
 ```bash
 python3 app.py --provider anthropic
+```
+
+After installing, you can also run:
+
+```bash
+fireseed --provider anthropic
 ```
 
 Run single prompt:

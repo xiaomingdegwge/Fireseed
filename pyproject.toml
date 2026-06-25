@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fireseed"
+version = "0.1.0"
+description = "A minimal, learning-oriented coding agent runtime split from cc-mini."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.40.0",
+    "openai>=1.0.0",
+    "rich>=13.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+fireseed = "app:main"
+
+[tool.setuptools]
+py-modules = [
+    "_keylistener",
+    "app",
+    "commands",
+    "compact",
+    "config",
+    "context",
+    "cost_tracker",
+    "engine",
+    "llm",
+    "permissions",
+    "session",
+]
+packages = ["tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

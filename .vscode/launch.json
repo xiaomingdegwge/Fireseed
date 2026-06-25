@@ -1,0 +1,134 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Fireseed (one-shot)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "mock", "--print", "hello"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Fireseed (one-shot, Debug Console)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "mock", "--print", "请只输出：PONG"],
+      "console": "internalConsole",
+      "redirectOutput": true,
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Fireseed (interactive)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "mock"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Fireseed case1 --print hello",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "mock", "--print", "hello"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Fireseed case2 --print /tool read README.md",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "mock", "--print", "/tool read README.md"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Fireseed case3 --print /tool grep Fireseed :: README.md",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "mock", "--print", "/tool grep Fireseed :: README.md"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Fireseed case4 --auto-approve --print /tool bash pwd",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "mock", "--auto-approve", "--print", "/tool bash pwd"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug Fireseed case5 --provider anthropic",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": ["-Xfrozen_modules=off"],
+      "program": "${workspaceFolder}/app.py",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      },
+      "args": ["--provider", "anthropic"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}
