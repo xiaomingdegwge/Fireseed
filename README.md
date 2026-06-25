@@ -11,6 +11,8 @@ preserving the original learning-oriented commit history.
 - Session persistence (JSONL)
 - Real provider support (`anthropic` / `openai`) + mock fallback
 - API key fallback loading from environment and `~/.bashrc`
+- TOML config files (`~/.config/fireseed/config.toml`, `.fireseed.toml`, or `--config`)
+- Model aliases (`sonnet`, `opus`, `haiku`, `best`) and model-aware default max tokens
 - API retry and retryable error handling
 - Read-only tool parallel execution batches
 - Session resume support (`--resume`)
@@ -84,21 +86,53 @@ ANTHROPIC_API_KEY=...
 Note: the first migrated version still accepts the `CC_DUP_*` environment
 variable names for compatibility with the teaching code it was split from.
 
+## TOML Config
+
+Fireseed loads config in this order:
+
+1. `~/.config/fireseed/config.toml`
+2. `.fireseed.toml` in the current working directory
+3. explicit `--config <path>`
+
+CLI flags override environment variables, and environment variables override TOML.
+
+```toml
+provider = "anthropic"
+model = "sonnet"
+
+[anthropic]
+api_key = "sk-ant-..."
+base_url = "https://your-gateway.example.com"
+```
+
+OpenAI-compatible example:
+
+```toml
+provider = "openai"
+
+[openai]
+api_key = "sk-..."
+base_url = "https://your-openai-gateway.example.com/v1"
+model = "gpt-4.1-mini"
+max_tokens = 8192
+effort = "medium"
+```
+
 ## API Key Resolution Order
 
 For `--provider anthropic`, key names are checked in order:
 
-1. `ANTHROPIC_API_KEY`
-2. `ANTHROPIC_AUTH_TOKEN`
-3. `CC_DUP_API_KEY`
-4. `CC_MINI_API_KEY`
+1. `FIRESEED_API_KEY`
+2. `CC_DUP_API_KEY`
+3. `ANTHROPIC_API_KEY`
+4. `ANTHROPIC_AUTH_TOKEN`
 5. exported values parsed from `~/.bashrc` with same names
 
 For `--provider openai`, key names:
 
-1. `OPENAI_API_KEY`
+1. `FIRESEED_API_KEY`
 2. `CC_DUP_API_KEY`
-3. `CC_MINI_API_KEY`
+3. `OPENAI_API_KEY`
 4. exported values parsed from `~/.bashrc` with same names
 
 If you see:
@@ -108,6 +142,7 @@ If you see:
 set one of:
 
 - `OPENAI_API_KEY`
+- `FIRESEED_API_KEY`
 - `CC_DUP_API_KEY`
 
 in your shell environment or `~/.bashrc`.
@@ -115,9 +150,10 @@ in your shell environment or `~/.bashrc`.
 `base_url` resolution order:
 
 1. `--base-url`
-2. `CC_DUP_BASE_URL`
-3. provider-specific env (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`)
-4. exported values parsed from `~/.bashrc`
+2. `FIRESEED_BASE_URL`
+3. `CC_DUP_BASE_URL`
+4. provider-specific env (`ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`)
+5. exported values parsed from `~/.bashrc`
 
 ## Built-in Tool Triggers (Mock LLM)
 

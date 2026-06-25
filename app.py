@@ -308,6 +308,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", help="Model name")
     parser.add_argument("--max-tokens", type=int, help="Maximum output tokens")
     parser.add_argument("--effort", choices=("low", "medium", "high"), help="Optional reasoning effort")
+    parser.add_argument("--config", help="Path to a Fireseed TOML config file")
     parser.add_argument("--session-dir", help="Session directory path")
     parser.add_argument("--resume", metavar="SESSION", help="Resume by session id prefix or index")
     parser.add_argument(

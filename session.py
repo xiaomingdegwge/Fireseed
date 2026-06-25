@@ -41,11 +41,17 @@ class SessionStore:
             return []
         sessions: list[SessionMeta] = []
         for meta_path in sorted(base.glob("*.meta.json"), reverse=True):
+            # /sessions 只展示可恢复的会话。程序启动时会先写 meta；
+            # 如果用户没发过消息，就不会有 jsonl，列出来会导致 /resume 空转。
+            session_id = meta_path.name.removesuffix(".meta.json")
+            msg_path = base / f"{session_id}.jsonl"
+            if not _has_persisted_messages(msg_path):
+                continue
             try:
                 payload = json.loads(meta_path.read_text(encoding="utf-8"))
             except Exception:
                 continue
-            sid = str(payload.get("session_id", meta_path.stem.replace(".meta", "")))
+            sid = str(payload.get("session_id", session_id))
             sessions.append(
                 SessionMeta(
                     session_id=sid,
@@ -84,3 +90,15 @@ class SessionStore:
                 messages = []
 
         return meta, messages
+
+
+def _has_persisted_messages(path: Path) -> bool:
+    if not path.exists() or path.stat().st_size == 0:
+        return False
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                return True
+    except Exception:
+        return False
+    return False
