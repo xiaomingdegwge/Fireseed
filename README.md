@@ -13,6 +13,7 @@ preserving the original learning-oriented commit history.
 - API key fallback loading from environment and `~/.bashrc`
 - TOML config files (`~/.config/fireseed/config.toml`, `.fireseed.toml`, or `--config`)
 - Model aliases (`sonnet`, `opus`, `haiku`, `best`) and model-aware default max tokens
+- Optional Bash sandbox via bubblewrap (`[sandbox]` TOML config)
 - API retry and retryable error handling
 - Read-only tool parallel execution batches
 - Session resume support (`--resume`)
@@ -117,6 +118,25 @@ model = "gpt-4.1-mini"
 max_tokens = 8192
 effort = "medium"
 ```
+
+Sandbox example:
+
+```toml
+[sandbox]
+enabled = true
+auto_allow_bash = true
+excluded_commands = ["docker *"]
+unshare_net = true
+
+[sandbox.filesystem]
+allow_write = ["."]
+deny_write = [".fireseed.toml"]
+deny_read = [".env"]
+```
+
+When sandbox is enabled and `bwrap` is available, Bash commands are wrapped
+before execution. With `auto_allow_bash = true`, sandboxed Bash commands skip
+the normal permission prompt; excluded commands still use the regular Bash path.
 
 ## API Key Resolution Order
 

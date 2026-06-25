@@ -13,6 +13,7 @@ from cost_tracker import CostTracker
 from engine import AbortedError, Engine
 from input_ui import build_prompt_session, has_prompt_toolkit, read_user_input
 from permissions import PermissionChecker
+from sandbox import SandboxManager, load_sandbox_config
 from session import SessionStore
 from tools import BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
 
@@ -327,8 +328,9 @@ def main() -> None:
     cfg = load_app_config(args)
 
     cwd = str(Path.cwd())
-    tools = [ReadTool(), EditTool(), WriteTool(), GlobTool(), GrepTool(), BashTool()]
-    permissions = PermissionChecker(auto_approve=cfg.auto_approve)
+    sandbox_manager = SandboxManager(load_sandbox_config(cfg.config_paths))
+    tools = [ReadTool(), EditTool(), WriteTool(), GlobTool(), GrepTool(), BashTool(sandbox_manager, cwd=cwd)]
+    permissions = PermissionChecker(auto_approve=cfg.auto_approve, sandbox_manager=sandbox_manager)
     cost_tracker = CostTracker()
     session_store = SessionStore(
         cwd=cwd,
@@ -393,7 +395,9 @@ def main() -> None:
 
     print(
         "cc-dup-mini started | "
-        f"provider={cfg.provider} | model={cfg.model} | session={session_store.session_id}"
+        f"provider={cfg.provider} | model={cfg.model} | "
+        f"sandbox={'on' if sandbox_manager.is_enabled() else 'off'} | "
+        f"session={session_store.session_id}"
     )
     input_note = "history/completion on, Alt+Enter newline" if has_prompt_toolkit() else "basic input"
     print(

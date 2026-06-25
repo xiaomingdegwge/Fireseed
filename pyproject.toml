@@ -38,7 +38,7 @@ py-modules = [
     "permissions",
     "session",
 ]
-packages = ["tools"]
+packages = ["tools", "sandbox"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
