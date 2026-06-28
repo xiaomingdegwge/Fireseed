@@ -20,6 +20,7 @@ Fireseed 已迁入：
 - 配置系统增强：TOML、模型 alias、模型默认 max tokens、provider 分节
 - prompt_toolkit 输入体验：历史记录、slash 补全、Alt+Enter 多行输入
 - Sandbox 底座：配置解析、bwrap 包装、依赖检测、BashTool 接入、auto_allow 权限联动
+- Skills 基础系统：`/skills`、`/review`、`/commit`、`/test`、`/simplify`、项目/用户 SKILL.md
 - API retry
 - 只读工具并发
 - Rich spinner + Esc cancel
@@ -30,14 +31,13 @@ Fireseed 已迁入：
 
 | 顺序 | 功能 | 迁入原因 | 主要依赖 |
 |---|---|---|---|
-| 1 | Skills 基础系统 | `/review`、`/commit`、`/test`、`/simplify` 是高频工作流，比高级 agent 更实用 | 命令系统、Edit/Write/Bash |
-| 2 | `/sandbox` 管理命令 | Sandbox 底座已迁入，命令可提升可发现性和调试体验 | SandboxManager |
-| 3 | AskUserQuestion 工具 | 让模型能主动澄清需求，是更接近 Claude Code 的交互能力 | prompt_toolkit 更佳 |
-| 4 | Plan Mode | 支持计划/执行分离，适合复杂任务；需要交互式澄清和权限限制配合 | AskUserQuestion、权限系统 |
-| 5 | 媒体输入 `@path` | 支持图片/文件块输入，增强模型上下文能力 | LLM content block 支持 |
-| 6 | Coordinator / Agent / WorkerManager | 多 worker 并行任务系统能力强，但复杂度高 | Skills、权限、会话更稳定后 |
-| 7 | Memory / KAIROS | 跨会话记忆和自动整理，属于长期增强能力 | 配置系统、session |
-| 8 | Buddy | 有产品个性，但不是 Fireseed 当前学习主线的核心 | 可独立迁 |
+| 1 | `/sandbox` 管理命令 | Sandbox 底座已迁入，命令可提升可发现性和调试体验 | SandboxManager |
+| 2 | AskUserQuestion 工具 | 让模型能主动澄清需求，是更接近 Claude Code 的交互能力 | prompt_toolkit 更佳 |
+| 3 | Plan Mode | 支持计划/执行分离，适合复杂任务；需要交互式澄清和权限限制配合 | AskUserQuestion、权限系统 |
+| 4 | 媒体输入 `@path` | 支持图片/文件块输入，增强模型上下文能力 | LLM content block 支持 |
+| 5 | Coordinator / Agent / WorkerManager | 多 worker 并行任务系统能力强，但复杂度高 | Skills、权限、会话更稳定后 |
+| 6 | Memory / KAIROS | 跨会话记忆和自动整理，属于长期增强能力 | 配置系统、session |
+| 7 | Buddy | 有产品个性，但不是 Fireseed 当前学习主线的核心 | 可独立迁 |
 
 ## 推荐分批
 
@@ -74,9 +74,9 @@ Fireseed 已迁入：
 - [x] Bash sandbox 配置和包装
 - [x] sandbox 与权限系统联动
 - [ ] `/sandbox` 管理命令
-- `skills.py`
-- `skills_bundled.py`
-- `/skills`、`/review`、`/commit`、`/test`、`/simplify`
+- [x] `skills.py`
+- [x] `skills_bundled.py`
+- [x] `/skills`、`/review`、`/commit`、`/test`、`/simplify`
 
 ### 第四批：AskUserQuestion + Plan Mode
 
@@ -103,16 +103,16 @@ Fireseed 已迁入：
 
 ## 下一步建议
 
-下一步优先迁入 **Skills 基础系统**。
+下一步优先迁入 **`/sandbox` 管理命令**。
 
 原因：
 
-- Sandbox 底座已经接入 BashTool 和权限系统
-- Skills 能把 `/review`、`/commit`、`/test` 这类高频工作流沉淀成可学习的命令
-- 这批和已有 Edit/Write/Bash 能力关联度最高
+- Sandbox 底座已经可用，但只能通过 TOML 查看/调整
+- `/sandbox` 命令能展示依赖检测、当前模式和排除规则
+- 这一步能让安全能力更容易学习和调试
 
 建议提交粒度：
 
-1. 迁入 `skills.py` / `skills_bundled.py` 的轻量版本。
-2. 增加 `/skills` 列表命令。
-3. 迁入 `/review`、`/commit`、`/test`、`/simplify` 的基础提示流。
+1. 增加 `/sandbox` 状态展示。
+2. 支持 `/sandbox mode <auto-allow|regular|disabled>`。
+3. 支持 `/sandbox exclude <pattern>`。

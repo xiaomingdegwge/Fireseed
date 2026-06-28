@@ -27,6 +27,7 @@ class CommandResult:
     # 如果切换了会话，就把新的 SessionStore 交还给 app.py。
     handled: bool = True
     session_store: SessionStore | None = None
+    pending_query: str | None = None
 
 
 _COMMANDS: list[tuple[str, str]] = [
@@ -36,13 +37,23 @@ _COMMANDS: list[tuple[str, str]] = [
     ("resume <id|number>", "Resume a saved session"),
     ("compact [note]", "Summarize older context and keep recent messages"),
     ("cost", "Show token usage and estimated cost"),
+    ("skills", "List available skills"),
     ("clear", "Clear in-memory conversation"),
 ]
 
 
 def command_specs() -> list[tuple[str, str]]:
     """给 help、补全等 UI 层复用的 slash command 清单。"""
-    return list(_COMMANDS)
+    specs = list(_COMMANDS)
+    try:
+        from skills import list_skills
+
+        for skill in list_skills(user_invocable_only=True):
+            hint = f" <{skill.argument_hint}>" if skill.argument_hint else ""
+            specs.append((f"{skill.name}{hint}", skill.description or "Run skill"))
+    except Exception:
+        pass
+    return specs
 
 
 def parse_command(text: str) -> tuple[str, str] | None:
@@ -70,13 +81,19 @@ def handle_command(name: str, args: str, ctx: CommandContext) -> CommandResult:
         return _cmd_compact(args, ctx)
     if name == "cost":
         return _cmd_cost(ctx)
+    if name == "skills":
+        return _cmd_skills()
     if name == "clear":
         ctx.engine.set_messages([])
         print("[clear] conversation reset in memory (session file unchanged)")
         return CommandResult()
 
+    skill_result = _cmd_skill(name, args)
+    if skill_result is not None:
+        return skill_result
+
     print(f"[command] unknown command: /{name}")
-    print("Use /help to list commands.")
+    print("Use /help or /skills to list commands.")
     return CommandResult()
 
 
@@ -177,3 +194,33 @@ def _cmd_cost(ctx: CommandContext) -> CommandResult:
         return CommandResult()
     print(ctx.cost_tracker.format_cost())
     return CommandResult()
+
+
+def _cmd_skills() -> CommandResult:
+    from skills import list_skills
+
+    skills = list_skills(user_invocable_only=True)
+    if not skills:
+        print("[skills] none")
+        return CommandResult()
+    print("Available skills:")
+    for skill in skills:
+        hint = f" <{skill.argument_hint}>" if skill.argument_hint else ""
+        print(f"  /{skill.name}{hint:<14} {skill.description} ({skill.source})")
+    return CommandResult()
+
+
+def _cmd_skill(name: str, args: str) -> CommandResult | None:
+    from skills import get_skill
+
+    skill = get_skill(name)
+    if skill is None:
+        return None
+    prompt = skill.get_prompt(args)
+    if not prompt:
+        print(f"[skills] /{name} produced no prompt")
+        return CommandResult()
+    # MAMBA2D: Skill dispatch. Slash command 只负责把 skill 变成 prompt；
+    # app.py 随后把 pending_query 交给 run_query，复用完整 agent/tool 主循环。
+    print(f"[skills] running /{name}")
+    return CommandResult(pending_query=prompt)

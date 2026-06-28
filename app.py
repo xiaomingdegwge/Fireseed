@@ -15,6 +15,8 @@ from input_ui import build_prompt_session, has_prompt_toolkit, read_user_input
 from permissions import PermissionChecker
 from sandbox import SandboxManager, load_sandbox_config
 from session import SessionStore
+from skills import build_skills_prompt_section, discover_skills
+from skills_bundled import register_bundled_skills
 from tools import BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
 
 try:
@@ -329,6 +331,12 @@ def main() -> None:
 
     cwd = str(Path.cwd())
     sandbox_manager = SandboxManager(load_sandbox_config(cfg.config_paths))
+    register_bundled_skills()
+    discover_skills(cwd)
+    system_prompt = build_system_prompt(cwd=cwd)
+    skills_prompt = build_skills_prompt_section()
+    if skills_prompt:
+        system_prompt += "\n" + skills_prompt
     tools = [ReadTool(), EditTool(), WriteTool(), GlobTool(), GrepTool(), BashTool(sandbox_manager, cwd=cwd)]
     permissions = PermissionChecker(auto_approve=cfg.auto_approve, sandbox_manager=sandbox_manager)
     cost_tracker = CostTracker()
@@ -339,7 +347,7 @@ def main() -> None:
     )
     engine = Engine(
         tools=tools,
-        system_prompt=build_system_prompt(cwd=cwd),
+        system_prompt=system_prompt,
         permission_checker=permissions,
         provider=cfg.provider,
         api_key=cfg.api_key,
@@ -440,7 +448,9 @@ def main() -> None:
             result = handle_command(command[0], command[1], command_ctx)
             if result.session_store is not None:
                 session_store = result.session_store
-            continue
+            if result.pending_query is None:
+                continue
+            user_input = result.pending_query
 
         run_query(
             engine,

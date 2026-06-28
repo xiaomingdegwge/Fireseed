@@ -37,6 +37,8 @@ py-modules = [
     "llm",
     "permissions",
     "session",
+    "skills",
+    "skills_bundled",
 ]
 packages = ["tools", "sandbox"]
 
