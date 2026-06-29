@@ -160,7 +160,7 @@ def run_query(
                     if first_text:
                         spinner.stop()
                         if listener is not None:
-                            listener.pause()
+                            listener.pause(restore_terminal=False)
                         streaming = True
                         first_text = False
                     console.print(text, end="")

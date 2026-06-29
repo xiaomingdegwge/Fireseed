@@ -48,8 +48,10 @@ class EscListener:
         self._on_cancel = on_cancel
         self._stop = threading.Event()
         self._paused = threading.Event()   # set = paused, clear = running
+        self._io_lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._old_settings = None
+        self._in_cbreak = False
         self._fd = sys.stdin.fileno()
         # Debug Console/non-interactive launches are not TTY-backed.
         self._enabled = os.isatty(self._fd)
@@ -66,7 +68,7 @@ class EscListener:
         # (chars available immediately, Ctrl+C still raises KeyboardInterrupt)
         try:
             self._old_settings = termios.tcgetattr(self._fd)
-            tty.setcbreak(self._fd)
+            self._enable_cbreak()
         except OSError:
             # Some debug adapters expose stdin but not as a real terminal.
             self._enabled = False
@@ -83,22 +85,32 @@ class EscListener:
         if self._thread is not None:
             self._thread.join(timeout=0.5)
         # Restore terminal
-        if self._old_settings is not None:
-            termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old_settings)
+        with self._io_lock:
+            self._restore_terminal()
             self._old_settings = None
 
     # -- pause/resume for interactive input --------------------------------
 
-    def pause(self):
-        """Pause the listener so stdin can be read by permission prompts."""
+    def pause(self, restore_terminal: bool = True):
+        """Pause the listener so stdin can be read elsewhere.
+
+        ``restore_terminal`` should be true for prompts that call input(), so
+        typed characters echo and line editing works normally. Streaming output
+        uses false so the main thread can still detect a bare ESC immediately.
+        """
         if not self._enabled:
             return
         self._paused.set()
+        if restore_terminal:
+            with self._io_lock:
+                self._restore_terminal()
 
     def resume(self):
         """Resume listening after interactive input is done."""
         if not self._enabled:
             return
+        with self._io_lock:
+            self._enable_cbreak()
         self._paused.clear()
 
     # -- non-blocking ESC check for main thread ----------------------------
@@ -116,20 +128,33 @@ class EscListener:
             return False
         if self.pressed:
             return True
-        while self._has_data(0):
-            b = os.read(self._fd, 1)
-            if b == b'\x1b':
-                if self._has_data(0.05):
-                    self._drain()
-                    continue
-                self.pressed = True
-                if self._on_cancel:
-                    self._on_cancel()
-                return True
-            # Non-ESC: discard
+        with self._io_lock:
+            while self._has_data(0):
+                b = os.read(self._fd, 1)
+                if b == b'\x1b':
+                    if self._has_data(0.05):
+                        self._drain()
+                        continue
+                    self.pressed = True
+                    if self._on_cancel:
+                        self._on_cancel()
+                    return True
+                # Non-ESC: discard
         return False
 
     # -- internal ---------------------------------------------------------
+
+    def _enable_cbreak(self):
+        if self._in_cbreak:
+            return
+        tty.setcbreak(self._fd)
+        self._in_cbreak = True
+
+    def _restore_terminal(self):
+        if not self._in_cbreak or self._old_settings is None:
+            return
+        termios.tcsetattr(self._fd, termios.TCSANOW, self._old_settings)
+        self._in_cbreak = False
 
     def _read_byte(self) -> bytes:
         """Read a single byte directly from the fd (unbuffered)."""
@@ -153,18 +178,19 @@ class EscListener:
 
             if not self._has_data(0.05):
                 continue
-            if self._paused.is_set():
-                continue
-
-            b = self._read_byte()
+            with self._io_lock:
+                if self._paused.is_set() or not self._has_data(0):
+                    continue
+                b = self._read_byte()
             if b == b'\x1b':
                 # Distinguish bare ESC from escape sequences (arrow
                 # keys, F-keys, Alt+X, etc.) which all start with
                 # \x1b but are followed by more bytes immediately.
-                if self._has_data(0.05):
-                    # Escape sequence — drain remaining bytes and ignore
-                    self._drain()
-                    continue
+                with self._io_lock:
+                    if self._has_data(0.05):
+                        # Escape sequence — drain remaining bytes and ignore
+                        self._drain()
+                        continue
                 # No follow-up bytes → genuine ESC press
                 self.pressed = True
                 if self._on_cancel:
