@@ -13,11 +13,22 @@ from cost_tracker import CostTracker
 from engine import AbortedError, Engine
 from input_ui import build_prompt_session, has_prompt_toolkit, read_user_input
 from permissions import PermissionChecker
+from plan import PlanModeManager
 from sandbox import SandboxManager, load_sandbox_config
 from session import SessionStore
 from skills import build_skills_prompt_section, discover_skills
 from skills_bundled import register_bundled_skills
-from tools import AskUserQuestionTool, BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
+from tools import (
+    AskUserQuestionTool,
+    BashTool,
+    EditTool,
+    EnterPlanModeTool,
+    ExitPlanModeTool,
+    GlobTool,
+    GrepTool,
+    ReadTool,
+    WriteTool,
+)
 
 try:
     from rich.console import Console  # type: ignore[import-not-found]
@@ -46,6 +57,8 @@ def _tool_preview(tool_name: str, tool_input: dict) -> str:
         if questions:
             question = str(questions[0].get("question", ""))
             return question[:60] + ("..." if len(question) > 60 else "")
+    if tool_name in ("EnterPlanMode", "ExitPlanMode"):
+        return ""
     return ""
 
 
@@ -344,6 +357,7 @@ def main() -> None:
     cwd = str(Path.cwd())
     sandbox_config_path = str(Path(args.config).expanduser()) if args.config else str(Path(cwd) / ".fireseed.toml")
     sandbox_manager = SandboxManager(load_sandbox_config(cfg.config_paths))
+    plan_manager = PlanModeManager()
     register_bundled_skills()
     discover_skills(cwd)
     system_prompt = build_system_prompt(cwd=cwd)
@@ -357,9 +371,12 @@ def main() -> None:
         GlobTool(),
         GrepTool(),
         AskUserQuestionTool(),
+        EnterPlanModeTool(plan_manager),
+        ExitPlanModeTool(plan_manager),
         BashTool(sandbox_manager, cwd=cwd),
     ]
     permissions = PermissionChecker(auto_approve=cfg.auto_approve, sandbox_manager=sandbox_manager)
+    permissions.set_plan_manager(plan_manager)
     cost_tracker = CostTracker()
     session_store = SessionStore(
         cwd=cwd,
@@ -379,6 +396,7 @@ def main() -> None:
         session_store=session_store,
         cost_tracker=cost_tracker,
     )
+    plan_manager.bind_engine(engine)
     compact_service = CompactService(engine._client, model=cfg.model, effort=cfg.effort)
 
     if args.resume:

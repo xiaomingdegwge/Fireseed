@@ -1,6 +1,17 @@
 from unittest.mock import patch
 
-from tools import AskUserQuestionTool, BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
+from plan import PlanModeManager
+from tools import (
+    AskUserQuestionTool,
+    BashTool,
+    EditTool,
+    EnterPlanModeTool,
+    ExitPlanModeTool,
+    GlobTool,
+    GrepTool,
+    ReadTool,
+    WriteTool,
+)
 
 
 def test_read_tool_reads_file(tmp_path) -> None:
@@ -121,6 +132,8 @@ def test_ask_user_question_multi_select() -> None:
 
 def test_tool_read_only_flags() -> None:
     assert AskUserQuestionTool().is_read_only()
+    assert EnterPlanModeTool(PlanModeManager()).is_read_only()
+    assert ExitPlanModeTool(PlanModeManager()).is_read_only()
     assert ReadTool().is_read_only()
     assert GlobTool().is_read_only()
     assert GrepTool().is_read_only()

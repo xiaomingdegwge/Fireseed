@@ -85,9 +85,9 @@ Fireseed 已迁入：
 包含：
 
 - [x] `AskUserQuestion` 工具
-- `EnterPlanMode` / `ExitPlanMode`
-- Plan Mode 下的权限限制
-- context 中的 plan mode prompt
+- [x] `EnterPlanMode` / `ExitPlanMode`
+- [x] Plan Mode 下的权限限制
+- [x] context 中的 plan mode prompt
 
 ### 第五批：Coordinator / Memory / Buddy
 
@@ -103,16 +103,16 @@ Fireseed 已迁入：
 
 ## 下一步建议
 
-AskUserQuestion 已迁入，下一步优先迁入 **Plan Mode**。
+Plan Mode 已迁入，下一步优先迁入 **Coordinator / Sub-agent 基础能力**。
 
 原因：
 
 - Skills 和 Sandbox 已经形成可用的安全工作流
-- AskUserQuestion 已能让模型在信息不足时主动澄清，提升复杂任务可靠性
-- 后续 Plan Mode 也需要这个交互能力做支撑
+- AskUserQuestion 和 Plan Mode 已形成“先澄清/规划，再执行”的基础工作流
+- 后续 Coordinator / Sub-agent 可以复用现有工具循环、权限和会话上下文
 
 建议提交粒度：
 
-1. 迁入 `EnterPlanMode` / `ExitPlanMode` 工具。
-2. 在 Plan Mode 下限制写入类工具，只允许读代码、提问和退出计划。
-3. 补 context 中的 plan mode prompt 和基础测试。
+1. 迁入 WorkerManager 的最小任务执行框架。
+2. 迁入 Agent/Task 类工具，让主模型能派发只读探索任务。
+3. 补 coordinator prompt 和任务状态展示。

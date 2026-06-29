@@ -27,7 +27,7 @@ class Engine:
         permission_checker: PermissionChecker,
         provider: str = "mock",
         model: str = "mock-sonnet",
-        max_tokens: int = 1024,
+        max_tokens: int = 2048,
         api_key: str | None = None,
         base_url: str | None = None,
         effort: str | None = None,
@@ -69,6 +69,12 @@ class Engine:
 
     def get_system_prompt(self) -> str:
         return self._system_prompt
+
+    def set_system_prompt(self, system_prompt: str) -> None:
+        self._system_prompt = system_prompt
+
+    def get_tools(self) -> list[Tool]:
+        return list(self._tools.values())
 
     def abort(self) -> None:
         self._aborted = True

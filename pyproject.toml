@@ -37,6 +37,7 @@ py-modules = [
     "input_ui",
     "llm",
     "permissions",
+    "plan",
     "session",
     "session_viewer",
     "skills",

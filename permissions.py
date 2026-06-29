@@ -9,9 +9,12 @@ from tools.base import Tool
 
 if TYPE_CHECKING:
     from _keylistener import EscListener
+    from plan import PlanModeManager
     from sandbox import SandboxManager
 
 PermissionBehavior = Literal["allow", "deny"]
+_PLAN_MODE_ALLOWED_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion", "EnterPlanMode", "ExitPlanMode"}
+_PLAN_MODE_WRITE_TOOLS = {"Edit", "Write"}
 
 
 class PermissionChecker:
@@ -22,11 +25,17 @@ class PermissionChecker:
         self._sandbox_manager = sandbox_manager
         self._always_allow: set[str] = set()
         self._esc_listener: EscListener | None = None
+        self._plan_manager: PlanModeManager | None = None
+
+    def set_plan_manager(self, plan_manager: PlanModeManager) -> None:
+        self._plan_manager = plan_manager
 
     def set_esc_listener(self, listener: EscListener | None) -> None:
         self._esc_listener = listener
 
     def check(self, tool: Tool, inputs: dict) -> PermissionBehavior:
+        if self._plan_manager is not None and self._plan_manager.is_active:
+            return self._check_plan_mode(tool, inputs)
         if tool.is_read_only():
             return "allow"
         if (
@@ -40,6 +49,20 @@ class PermissionChecker:
         if self._auto_approve or tool.name in self._always_allow:
             return "allow"
         return self._prompt_user(tool, inputs)
+
+    def _check_plan_mode(self, tool: Tool, inputs: dict) -> PermissionBehavior:
+        if tool.name in _PLAN_MODE_ALLOWED_TOOLS:
+            return "allow"
+        if tool.name in _PLAN_MODE_WRITE_TOOLS:
+            file_path = str(inputs.get("file_path", ""))
+            plan_path = self._plan_manager.plan_file_path if self._plan_manager is not None else None
+            if plan_path and file_path == plan_path:
+                return "allow"
+            print(f"[plan] blocked {tool.name}: plan mode can only write the plan file ({plan_path})")
+            return "deny"
+        # Plan Mode 的核心隔离：禁止 Bash 和普通写入，避免“还没确认计划就动代码”。
+        print(f"[plan] blocked {tool.name}: plan mode only allows read tools, questions, and plan-file edits")
+        return "deny"
 
     def _prompt_user(self, tool: Tool, inputs: dict) -> PermissionBehavior:
         print(f"\n[permission] Tool={tool.name}")

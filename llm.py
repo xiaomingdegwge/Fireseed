@@ -473,6 +473,10 @@ class _MockClient:
                     }
                 ]
             })])
+        if text == "/tool plan":
+            return LLMMessage(content=[self._tool_use("EnterPlanMode", {})])
+        if text == "/tool exit-plan":
+            return LLMMessage(content=[self._tool_use("ExitPlanMode", {})])
         return LLMMessage(content=[{"type": "text", "text": f"Mock assistant: {text}"}])
 
     def _tool_use(self, name: str, inputs: dict[str, Any]) -> dict[str, Any]:
