@@ -1,9 +1,12 @@
 [sandbox]
 enabled = true
-auto_allow_bash = true
+auto_allow_bash = false
+allow_unsandboxed = false
+excluded_commands = []
 unshare_net = true
 
 [sandbox.filesystem]
 allow_write = ["."]
-deny_read = [".env"]
 deny_write = [".fireseed.toml"]
+deny_read = [".env"]
+allow_read = []

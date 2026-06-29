@@ -76,16 +76,21 @@ def _select_one(question: str, labels: list[str], descriptions: list[str]) -> st
         text_buf[0] += ch
 
     def get_tokens():
+        # prompt_toolkit 的 FormattedTextControl 需要这种格式:
+        # [(style, text), ...]，每一段文本可以单独指定颜色/粗体。
         tokens = [("bold", f"? {question}\n")]
         for i, (label, desc) in enumerate(zip(labels, descriptions)):
+            # cursor[0] 保存当前光标所在选项；当前行会显示 > 并用青色高亮。
             is_current = i == cursor[0]
             prefix = "  > " if is_current else "    "
             style = "ansibrightcyan" if is_current else ""
+            # 最后一个选项是 Other，用 text_buf[0] 保存用户输入的自定义内容。
             if i == other_idx:
                 if text_buf[0]:
                     tokens.append((style, f"{prefix}{i + 1}) "))
                     tokens.append(("ansibrightgreen bold", text_buf[0]))
                     if is_current:
+                        # 用一个灰色下划线模拟正在输入的光标。
                         tokens.append(("ansigray", "_"))
                 elif is_current:
                     tokens.append((style, f"{prefix}{i + 1}) "))
@@ -93,6 +98,7 @@ def _select_one(question: str, labels: list[str], descriptions: list[str]) -> st
                 else:
                     tokens.append(("ansigray", f"{prefix}{i + 1}) {label}"))
             else:
+                # 普通选项显示序号、标题；有描述时在后面追加灰色说明。
                 tokens.append((style, f"{prefix}{i + 1}) {label}"))
                 if desc:
                     tokens.append(("ansigray", f" - {desc}"))
@@ -196,17 +202,22 @@ def _select_multi(question: str, labels: list[str], descriptions: list[str]) -> 
         checked.add(other_idx)
 
     def get_tokens():
+        # prompt_toolkit 的 FormattedTextControl 需要这种格式:
+        # [(style, text), ...]，每一段文本可以单独指定颜色/粗体。
         tokens = [("bold", f"? {question}\n")]
         for i, (label, desc) in enumerate(zip(labels, descriptions)):
+            # cursor[0] 保存当前光标所在选项；checked 保存已经勾选的选项下标。
             is_current = i == cursor[0]
             mark = "x" if i in checked else " "
             prefix = "  > " if is_current else "    "
             style = "ansibrightcyan" if is_current else ""
+            # 最后一个选项是 Other，用 text_buf[0] 保存用户输入的自定义内容。
             if i == other_idx:
                 if text_buf[0]:
                     tokens.append((style, f"{prefix}[{mark}] {i + 1}) "))
                     tokens.append(("ansibrightgreen bold", text_buf[0]))
                     if is_current:
+                        # 用一个灰色下划线模拟正在输入的光标。
                         tokens.append(("ansigray", "_"))
                 elif is_current:
                     tokens.append((style, f"{prefix}[{mark}] {i + 1}) "))
@@ -214,6 +225,7 @@ def _select_multi(question: str, labels: list[str], descriptions: list[str]) -> 
                 else:
                     tokens.append(("ansigray", f"{prefix}[{mark}] {i + 1}) {label}"))
             else:
+                # 普通选项显示勾选状态、序号、标题；有描述时追加灰色说明。
                 tokens.append((style, f"{prefix}[{mark}] {i + 1}) {label}"))
                 if desc:
                     tokens.append(("ansigray", f" - {desc}"))
