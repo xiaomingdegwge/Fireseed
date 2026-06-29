@@ -78,6 +78,24 @@ Interactive REPL without Rich spinner (plain text only):
 python3 app.py --provider anthropic --plain
 ```
 
+View a saved JSONL session as a readable timeline:
+
+```bash
+python3 session_viewer.py .cc_dup_sessions/20260629-173248.jsonl
+```
+
+Export the same session to a collapsible browser view:
+
+```bash
+python3 session_viewer.py .cc_dup_sessions/20260629-173248.jsonl --html
+```
+
+After installing the package, the same viewer is available as:
+
+```bash
+fireseed-session-viewer .cc_dup_sessions/20260629-173248.jsonl --html
+```
+
 Create a `.env` in the project root or cwd (same convention as cc-mini):
 
 ```bash

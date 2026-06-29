@@ -22,6 +22,7 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
 
 [project.scripts]
 fireseed = "app:main"
+fireseed-session-viewer = "session_viewer:main"
 
 [tool.setuptools]
 py-modules = [
@@ -37,6 +38,7 @@ py-modules = [
     "llm",
     "permissions",
     "session",
+    "session_viewer",
     "skills",
     "skills_bundled",
 ]
