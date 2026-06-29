@@ -460,6 +460,19 @@ class _MockClient:
         if text.startswith("/tool bash "):
             command = text[len("/tool bash "):].strip()
             return LLMMessage(content=[self._tool_use("Bash", {"command": command})])
+        if text.startswith("/tool ask "):
+            question = text[len("/tool ask "):].strip()
+            return LLMMessage(content=[self._tool_use("AskUserQuestion", {
+                "questions": [
+                    {
+                        "question": question or "Continue?",
+                        "options": [
+                            {"label": "Yes", "description": "Continue with the current approach"},
+                            {"label": "No", "description": "Stop or choose another approach"},
+                        ],
+                    }
+                ]
+            })])
         return LLMMessage(content=[{"type": "text", "text": f"Mock assistant: {text}"}])
 
     def _tool_use(self, name: str, inputs: dict[str, Any]) -> dict[str, Any]:

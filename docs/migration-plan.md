@@ -84,7 +84,7 @@ Fireseed 已迁入：
 
 包含：
 
-- `AskUserQuestion` 工具
+- [x] `AskUserQuestion` 工具
 - `EnterPlanMode` / `ExitPlanMode`
 - Plan Mode 下的权限限制
 - context 中的 plan mode prompt
@@ -103,16 +103,16 @@ Fireseed 已迁入：
 
 ## 下一步建议
 
-下一步优先迁入 **AskUserQuestion 工具**。
+AskUserQuestion 已迁入，下一步优先迁入 **Plan Mode**。
 
 原因：
 
 - Skills 和 Sandbox 已经形成可用的安全工作流
-- AskUserQuestion 能让模型在信息不足时主动澄清，提升复杂任务可靠性
+- AskUserQuestion 已能让模型在信息不足时主动澄清，提升复杂任务可靠性
 - 后续 Plan Mode 也需要这个交互能力做支撑
 
 建议提交粒度：
 
-1. 迁入 AskUserQuestion 工具 schema 和事件处理。
-2. 让 Engine 在 tool_use 中识别澄清问题。
-3. 补 REPL 输入回答并继续同一轮任务的流程。
+1. 迁入 `EnterPlanMode` / `ExitPlanMode` 工具。
+2. 在 Plan Mode 下限制写入类工具，只允许读代码、提问和退出计划。
+3. 补 context 中的 plan mode prompt 和基础测试。

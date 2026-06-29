@@ -17,7 +17,7 @@ from sandbox import SandboxManager, load_sandbox_config
 from session import SessionStore
 from skills import build_skills_prompt_section, discover_skills
 from skills_bundled import register_bundled_skills
-from tools import BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
+from tools import AskUserQuestionTool, BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
 
 try:
     from rich.console import Console  # type: ignore[import-not-found]
@@ -41,6 +41,11 @@ def _tool_preview(tool_name: str, tool_input: dict) -> str:
         return fp[-60:] if len(fp) > 60 else fp
     if tool_name in ("Glob", "Grep"):
         return str(tool_input.get("pattern", ""))
+    if tool_name == "AskUserQuestion":
+        questions = tool_input.get("questions") or []
+        if questions:
+            question = str(questions[0].get("question", ""))
+            return question[:60] + ("..." if len(question) > 60 else "")
     return ""
 
 
@@ -108,6 +113,9 @@ def run_query(
                     print(f"[tool_call] {name} {inputs}")
                 elif etype == "tool_executing":
                     _, name, _inputs, activity = event
+                    if name == "AskUserQuestion":
+                        print(f"[tool_executing] {name} - waiting for user answer")
+                        continue
                     print(f"[tool_executing] {name} - {activity or 'running'}")
                 elif etype == "tool_result":
                     _, name, _inputs, result = event
@@ -183,6 +191,10 @@ def run_query(
 
                 elif etype == "tool_executing":
                     _, tool_name, _tool_input, activity = event
+                    if tool_name == "AskUserQuestion":
+                        # 交互式问题需要独占终端；这里不启动 spinner，避免覆盖选择菜单。
+                        spinner.stop()
+                        continue
                     if len(pending_tools) > 1:
                         names = [tn for tn, _ in pending_tools.values()]
                         spinner.start(_collapsed_tool_summary(names))
@@ -338,7 +350,15 @@ def main() -> None:
     skills_prompt = build_skills_prompt_section()
     if skills_prompt:
         system_prompt += "\n" + skills_prompt
-    tools = [ReadTool(), EditTool(), WriteTool(), GlobTool(), GrepTool(), BashTool(sandbox_manager, cwd=cwd)]
+    tools = [
+        ReadTool(),
+        EditTool(),
+        WriteTool(),
+        GlobTool(),
+        GrepTool(),
+        AskUserQuestionTool(),
+        BashTool(sandbox_manager, cwd=cwd),
+    ]
     permissions = PermissionChecker(auto_approve=cfg.auto_approve, sandbox_manager=sandbox_manager)
     cost_tracker = CostTracker()
     session_store = SessionStore(

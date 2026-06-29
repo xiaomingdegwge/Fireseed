@@ -185,6 +185,7 @@ In `--provider mock`, the model uses simple prefixes in user input:
 - `/tool edit <path> :: <old> :: <new>`
 - `/tool write <path> :: <content>`
 - `/tool bash <command>`
+- `/tool ask <question>`
 
 Example:
 
@@ -193,6 +194,8 @@ Example:
 ```
 
 The engine will emit tool events, execute the tool, feed `tool_result` back to the model, and then output the final assistant response.
+
+`/tool ask` is useful for checking the AskUserQuestion flow: Fireseed shows a terminal choice menu, waits for the user answer, writes that answer back as `tool_result`, then continues the same turn.
 
 ## Additional REPL Commands
 

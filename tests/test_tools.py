@@ -1,4 +1,6 @@
-from tools import BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
+from unittest.mock import patch
+
+from tools import AskUserQuestionTool, BashTool, EditTool, GlobTool, GrepTool, ReadTool, WriteTool
 
 
 def test_read_tool_reads_file(tmp_path) -> None:
@@ -84,7 +86,41 @@ def test_bash_tool_runs_command() -> None:
     assert result.content == "hello"
 
 
+def test_ask_user_question_single_select() -> None:
+    tool = AskUserQuestionTool()
+
+    with patch("tools.ask_user._select_one", return_value="Python"):
+        result = tool.execute(questions=[{
+            "question": "Pick a language?",
+            "options": [
+                {"label": "Python", "description": "Simple"},
+                {"label": "Go", "description": "Fast"},
+            ],
+        }])
+
+    assert not result.is_error
+    assert "Pick a language? => Python" in result.content
+
+
+def test_ask_user_question_multi_select() -> None:
+    tool = AskUserQuestionTool()
+
+    with patch("tools.ask_user._select_multi", return_value=["Python", "Go"]):
+        result = tool.execute(questions=[{
+            "question": "Pick languages?",
+            "options": [
+                {"label": "Python", "description": "Simple"},
+                {"label": "Go", "description": "Fast"},
+            ],
+            "multiSelect": True,
+        }])
+
+    assert not result.is_error
+    assert "Python, Go" in result.content
+
+
 def test_tool_read_only_flags() -> None:
+    assert AskUserQuestionTool().is_read_only()
     assert ReadTool().is_read_only()
     assert GlobTool().is_read_only()
     assert GrepTool().is_read_only()

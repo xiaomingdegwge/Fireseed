@@ -1,4 +1,5 @@
 from .base import Tool, ToolResult
+from .ask_user import AskUserQuestionTool
 from .bash import BashTool
 from .edit import EditTool
 from .glob import GlobTool
@@ -9,6 +10,7 @@ from .write import WriteTool
 __all__ = [
     "Tool",
     "ToolResult",
+    "AskUserQuestionTool",
     "ReadTool",
     "EditTool",
     "WriteTool",
