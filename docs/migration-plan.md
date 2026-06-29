@@ -21,6 +21,7 @@ Fireseed 已迁入：
 - prompt_toolkit 输入体验：历史记录、slash 补全、Alt+Enter 多行输入
 - Sandbox 底座：配置解析、bwrap 包装、依赖检测、BashTool 接入、auto_allow 权限联动
 - Skills 基础系统：`/skills`、`/review`、`/commit`、`/test`、`/simplify`、项目/用户 SKILL.md
+- `/sandbox` 管理命令：状态展示、依赖检查、模式切换、排除规则写回
 - API retry
 - 只读工具并发
 - Rich spinner + Esc cancel
@@ -31,13 +32,12 @@ Fireseed 已迁入：
 
 | 顺序 | 功能 | 迁入原因 | 主要依赖 |
 |---|---|---|---|
-| 1 | `/sandbox` 管理命令 | Sandbox 底座已迁入，命令可提升可发现性和调试体验 | SandboxManager |
-| 2 | AskUserQuestion 工具 | 让模型能主动澄清需求，是更接近 Claude Code 的交互能力 | prompt_toolkit 更佳 |
-| 3 | Plan Mode | 支持计划/执行分离，适合复杂任务；需要交互式澄清和权限限制配合 | AskUserQuestion、权限系统 |
-| 4 | 媒体输入 `@path` | 支持图片/文件块输入，增强模型上下文能力 | LLM content block 支持 |
-| 5 | Coordinator / Agent / WorkerManager | 多 worker 并行任务系统能力强，但复杂度高 | Skills、权限、会话更稳定后 |
-| 6 | Memory / KAIROS | 跨会话记忆和自动整理，属于长期增强能力 | 配置系统、session |
-| 7 | Buddy | 有产品个性，但不是 Fireseed 当前学习主线的核心 | 可独立迁 |
+| 1 | AskUserQuestion 工具 | 让模型能主动澄清需求，是更接近 Claude Code 的交互能力 | prompt_toolkit 更佳 |
+| 2 | Plan Mode | 支持计划/执行分离，适合复杂任务；需要交互式澄清和权限限制配合 | AskUserQuestion、权限系统 |
+| 3 | 媒体输入 `@path` | 支持图片/文件块输入，增强模型上下文能力 | LLM content block 支持 |
+| 4 | Coordinator / Agent / WorkerManager | 多 worker 并行任务系统能力强，但复杂度高 | Skills、权限、会话更稳定后 |
+| 5 | Memory / KAIROS | 跨会话记忆和自动整理，属于长期增强能力 | 配置系统、session |
+| 6 | Buddy | 有产品个性，但不是 Fireseed 当前学习主线的核心 | 可独立迁 |
 
 ## 推荐分批
 
@@ -73,7 +73,7 @@ Fireseed 已迁入：
 
 - [x] Bash sandbox 配置和包装
 - [x] sandbox 与权限系统联动
-- [ ] `/sandbox` 管理命令
+- [x] `/sandbox` 管理命令
 - [x] `skills.py`
 - [x] `skills_bundled.py`
 - [x] `/skills`、`/review`、`/commit`、`/test`、`/simplify`
@@ -103,16 +103,16 @@ Fireseed 已迁入：
 
 ## 下一步建议
 
-下一步优先迁入 **`/sandbox` 管理命令**。
+下一步优先迁入 **AskUserQuestion 工具**。
 
 原因：
 
-- Sandbox 底座已经可用，但只能通过 TOML 查看/调整
-- `/sandbox` 命令能展示依赖检测、当前模式和排除规则
-- 这一步能让安全能力更容易学习和调试
+- Skills 和 Sandbox 已经形成可用的安全工作流
+- AskUserQuestion 能让模型在信息不足时主动澄清，提升复杂任务可靠性
+- 后续 Plan Mode 也需要这个交互能力做支撑
 
 建议提交粒度：
 
-1. 增加 `/sandbox` 状态展示。
-2. 支持 `/sandbox mode <auto-allow|regular|disabled>`。
-3. 支持 `/sandbox exclude <pattern>`。
+1. 迁入 AskUserQuestion 工具 schema 和事件处理。
+2. 让 Engine 在 tool_use 中识别澄清问题。
+3. 补 REPL 输入回答并继续同一轮任务的流程。

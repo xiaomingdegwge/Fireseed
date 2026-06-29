@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from compact import CompactService, estimate_tokens
 from cost_tracker import CostTracker
 from engine import Engine
+from sandbox import SandboxManager
 from session import SessionStore
 
 
@@ -19,6 +20,8 @@ class CommandContext:
     model: str
     compact_service: CompactService | None = None
     cost_tracker: CostTracker | None = None
+    sandbox_manager: SandboxManager | None = None
+    sandbox_config_path: str | None = None
 
 
 @dataclass
@@ -38,6 +41,7 @@ _COMMANDS: list[tuple[str, str]] = [
     ("compact [note]", "Summarize older context and keep recent messages"),
     ("cost", "Show token usage and estimated cost"),
     ("skills", "List available skills"),
+    ("sandbox [deps|mode|exclude]", "Show or change sandbox settings"),
     ("clear", "Clear in-memory conversation"),
 ]
 
@@ -83,6 +87,8 @@ def handle_command(name: str, args: str, ctx: CommandContext) -> CommandResult:
         return _cmd_cost(ctx)
     if name == "skills":
         return _cmd_skills()
+    if name == "sandbox":
+        return _cmd_sandbox(args, ctx)
     if name == "clear":
         ctx.engine.set_messages([])
         print("[clear] conversation reset in memory (session file unchanged)")
@@ -224,3 +230,78 @@ def _cmd_skill(name: str, args: str) -> CommandResult | None:
     # app.py 随后把 pending_query 交给 run_query，复用完整 agent/tool 主循环。
     print(f"[skills] running /{name}")
     return CommandResult(pending_query=prompt)
+
+
+def _cmd_sandbox(args: str, ctx: CommandContext) -> CommandResult:
+    if ctx.sandbox_manager is None:
+        print("[sandbox] sandbox manager is not configured")
+        return CommandResult()
+
+    parts = args.split()
+    action = parts[0] if parts else "status"
+    manager = ctx.sandbox_manager
+
+    if action in {"status", ""}:
+        _print_sandbox_status(manager, ctx.sandbox_config_path)
+        return CommandResult()
+
+    if action == "deps":
+        check = manager.check_dependencies()
+        print("[sandbox] dependencies:", "ok" if check.ok else "failed")
+        for error in check.errors:
+            print(f"  error: {error}")
+        for warning in check.warnings:
+            print(f"  warning: {warning}")
+        return CommandResult()
+
+    if action == "mode":
+        if len(parts) < 2:
+            print("Usage: /sandbox mode <auto-allow|regular|disabled>")
+            return CommandResult()
+        print(f"[sandbox] {manager.set_mode(parts[1])}")
+        _save_sandbox_config(manager, ctx.sandbox_config_path)
+        return CommandResult()
+
+    if action == "exclude":
+        pattern = args.partition("exclude")[2].strip()
+        if not pattern:
+            print("Usage: /sandbox exclude <pattern>")
+            return CommandResult()
+        print(f"[sandbox] {manager.add_excluded_command(pattern)}")
+        _save_sandbox_config(manager, ctx.sandbox_config_path)
+        return CommandResult()
+
+    print("Usage: /sandbox [status|deps|mode <auto-allow|regular|disabled>|exclude <pattern>]")
+    return CommandResult()
+
+
+def _print_sandbox_status(manager: SandboxManager, config_path: str | None) -> None:
+    config = manager.config
+    check = manager.check_dependencies()
+    mode = "disabled"
+    if config.enabled:
+        mode = "auto-allow" if config.auto_allow_bash else "regular"
+    print("[sandbox] status")
+    print(f"  config: {config_path or '(not persisted)'}")
+    print(f"  configured: {'on' if config.enabled else 'off'}")
+    print(f"  effective: {'on' if manager.is_enabled() else 'off'}")
+    print(f"  mode: {mode}")
+    print(f"  dependencies: {'ok' if check.ok else 'failed'}")
+    print(f"  network isolated: {'yes' if config.unshare_net else 'no'}")
+    print(f"  allow_write: {', '.join(config.filesystem.allow_write) or '(none)'}")
+    print(f"  deny_write: {', '.join(config.filesystem.deny_write) or '(none)'}")
+    print(f"  deny_read: {', '.join(config.filesystem.deny_read) or '(none)'}")
+    print(f"  excluded: {', '.join(config.excluded_commands) or '(none)'}")
+
+
+def _save_sandbox_config(manager: SandboxManager, config_path: str | None) -> None:
+    if not config_path:
+        print("[sandbox] config path is not configured; change kept in memory only")
+        return
+    try:
+        from pathlib import Path
+
+        manager.save(Path(config_path))
+        print(f"[sandbox] saved {config_path}")
+    except Exception as exc:
+        print(f"[sandbox] save failed: {exc}")

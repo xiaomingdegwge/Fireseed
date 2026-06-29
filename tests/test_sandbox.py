@@ -1,5 +1,5 @@
 from sandbox.command_matcher import contains_excluded_command, parse_rule, RuleType
-from sandbox.config import SandboxConfig, SandboxFilesystemConfig, load_sandbox_config
+from sandbox.config import SandboxConfig, SandboxFilesystemConfig, load_sandbox_config, save_sandbox_config
 from sandbox.manager import SandboxManager
 from sandbox.wrapper import _resolve_paths, build_bwrap_args, wrap_command
 from permissions import PermissionChecker
@@ -93,6 +93,33 @@ def test_sandbox_manager_decides_when_to_sandbox(monkeypatch) -> None:
 
     assert manager.should_sandbox("echo hello")
     assert not manager.should_sandbox("docker build .")
+
+
+def test_sandbox_manager_mode_and_exclude() -> None:
+    manager = SandboxManager(SandboxConfig())
+
+    assert "auto-allow" in manager.set_mode("auto-allow")
+    assert manager.config.enabled
+    assert manager.config.auto_allow_bash
+
+    manager.add_excluded_command("docker *")
+    manager.add_excluded_command("docker *")
+    assert manager.config.excluded_commands == ["docker *"]
+
+
+def test_save_sandbox_config_preserves_other_sections(tmp_path) -> None:
+    config_path = tmp_path / ".fireseed.toml"
+    config_path.write_text('provider = "mock"\n\n[openai]\nmodel = "gpt-4.1-mini"\n', encoding="utf-8")
+    config = SandboxConfig(enabled=True, auto_allow_bash=True, excluded_commands=["docker *"])
+
+    save_sandbox_config(config, config_path)
+
+    content = config_path.read_text(encoding="utf-8")
+    assert 'provider = "mock"' in content
+    assert "[openai]" in content
+    assert "[sandbox]" in content
+    assert "auto_allow_bash = true" in content
+    assert 'excluded_commands = ["docker *"]' in content
 
 
 def test_permission_auto_allows_sandboxed_bash(monkeypatch) -> None:

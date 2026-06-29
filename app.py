@@ -330,6 +330,7 @@ def main() -> None:
     cfg = load_app_config(args)
 
     cwd = str(Path.cwd())
+    sandbox_config_path = str(Path(args.config).expanduser()) if args.config else str(Path(cwd) / ".fireseed.toml")
     sandbox_manager = SandboxManager(load_sandbox_config(cfg.config_paths))
     register_bundled_skills()
     discover_skills(cwd)
@@ -409,7 +410,7 @@ def main() -> None:
     )
     input_note = "history/completion on, Alt+Enter newline" if has_prompt_toolkit() else "basic input"
     print(
-        "Esc cancels turn (TTY). Commands: /help /sessions /resume /compact /cost /clear . "
+        "Esc cancels turn (TTY). Commands: /help /skills /sandbox /sessions /resume /compact /cost /clear . "
         f"Input: {input_note}. Type 'exit' to quit."
     )
     prompt_session = build_prompt_session()
@@ -444,6 +445,8 @@ def main() -> None:
                 model=cfg.model,
                 compact_service=compact_service,
                 cost_tracker=cost_tracker,
+                sandbox_manager=sandbox_manager,
+                sandbox_config_path=sandbox_config_path,
             )
             result = handle_command(command[0], command[1], command_ctx)
             if result.session_store is not None:

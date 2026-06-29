@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .checker import DependencyCheck, check_dependencies
 from .command_matcher import contains_excluded_command
-from .config import SandboxConfig
+from .config import SandboxConfig, save_sandbox_config
 from .wrapper import build_bwrap_args, wrap_command
 
 
@@ -45,3 +45,26 @@ class SandboxManager:
 
     def build_args(self, command: str, cwd: str | None = None) -> list[str]:
         return build_bwrap_args(command, self._config, cwd)
+
+    def set_mode(self, mode: str) -> str:
+        if mode == "auto-allow":
+            self._config.enabled = True
+            self._config.auto_allow_bash = True
+            return "sandbox mode: auto-allow"
+        if mode == "regular":
+            self._config.enabled = True
+            self._config.auto_allow_bash = False
+            return "sandbox mode: regular"
+        if mode == "disabled":
+            self._config.enabled = False
+            self._config.auto_allow_bash = False
+            return "sandbox mode: disabled"
+        return f"unknown sandbox mode: {mode}"
+
+    def add_excluded_command(self, pattern: str) -> str:
+        if pattern and pattern not in self._config.excluded_commands:
+            self._config.excluded_commands.append(pattern)
+        return f"excluded command pattern: {pattern}"
+
+    def save(self, path) -> None:
+        save_sandbox_config(self._config, path)

@@ -202,6 +202,10 @@ The engine will emit tool events, execute the tool, feed `tool_result` back to t
 - `/commit [message]` : stage relevant changes and create a commit
 - `/test [filter]` : run and analyze tests
 - `/simplify [focus]` : improve changed code for clarity and reuse
+- `/sandbox` : show sandbox status
+- `/sandbox deps` : show bubblewrap dependency check
+- `/sandbox mode <auto-allow|regular|disabled>` : change sandbox mode and save `.fireseed.toml`
+- `/sandbox exclude <pattern>` : add a command exclusion pattern and save `.fireseed.toml`
 - `/sessions` : list local saved sessions
 - `/history` : alias for `/sessions`
 - `/resume <number|prefix>` : resume a saved session inside the REPL

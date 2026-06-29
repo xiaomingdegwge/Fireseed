@@ -4,6 +4,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import re
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -54,6 +55,17 @@ def load_sandbox_config(config_paths: tuple[Path, ...] = ()) -> SandboxConfig:
     return _dict_to_config(merged)
 
 
+def save_sandbox_config(config: SandboxConfig, path: Path) -> None:
+    """把当前 SandboxConfig 写回 TOML，只替换 [sandbox] 相关段。"""
+    section = _render_sandbox_section(config)
+    try:
+        original = path.read_text(encoding="utf-8") if path.exists() else ""
+    except OSError:
+        original = ""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_replace_sandbox_section(original, section), encoding="utf-8")
+
+
 def _dict_to_config(raw: dict[str, Any]) -> SandboxConfig:
     filesystem_raw = raw.get("filesystem", {})
     if not isinstance(filesystem_raw, dict):
@@ -81,3 +93,60 @@ def _string_list(value: Any, default: list[str] | None = None) -> list[str]:
     if isinstance(value, list):
         return [str(item) for item in value]
     return [str(value)]
+
+
+def _render_sandbox_section(config: SandboxConfig) -> str:
+    lines = [
+        "[sandbox]",
+        f"enabled = {_toml_bool(config.enabled)}",
+        f"auto_allow_bash = {_toml_bool(config.auto_allow_bash)}",
+        f"allow_unsandboxed = {_toml_bool(config.allow_unsandboxed)}",
+        f"excluded_commands = {_toml_list(config.excluded_commands)}",
+        f"unshare_net = {_toml_bool(config.unshare_net)}",
+        "",
+        "[sandbox.filesystem]",
+        f"allow_write = {_toml_list(config.filesystem.allow_write)}",
+        f"deny_write = {_toml_list(config.filesystem.deny_write)}",
+        f"deny_read = {_toml_list(config.filesystem.deny_read)}",
+        f"allow_read = {_toml_list(config.filesystem.allow_read)}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _replace_sandbox_section(original: str, sandbox_section: str) -> str:
+    if not original.strip():
+        return sandbox_section
+
+    header_re = re.compile(r"^\[(.+)\]\s*$")
+    kept: list[str] = []
+    insert_at: int | None = None
+    in_sandbox = False
+
+    for line in original.splitlines(keepends=True):
+        match = header_re.match(line.strip())
+        if match:
+            name = match.group(1).strip()
+            if name == "sandbox" or name.startswith("sandbox."):
+                in_sandbox = True
+                if insert_at is None:
+                    insert_at = len(kept)
+                continue
+            in_sandbox = False
+        if not in_sandbox:
+            kept.append(line)
+
+    if insert_at is None:
+        return original.rstrip("\n") + "\n\n" + sandbox_section
+
+    before = "".join(kept[:insert_at]).rstrip("\n")
+    after = "".join(kept[insert_at:]).lstrip("\n")
+    parts = [part for part in (before, sandbox_section.strip(), after) if part]
+    return "\n\n".join(parts) + "\n"
+
+
+def _toml_bool(value: bool) -> str:
+    return "true" if value else "false"
+
+
+def _toml_list(values: list[str]) -> str:
+    return "[" + ", ".join(f'"{value}"' for value in values) + "]"
