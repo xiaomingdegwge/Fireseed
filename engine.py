@@ -125,7 +125,7 @@ class Engine:
                                 if self._aborted:
                                     raise AbortedError()
                                 got_text = True
-                                yield ("text", text) # 模型返回的文本，事件("text", text_chunk)
+                                yield ("text", text) # 模型返回的文本，事件("text", text_chunk) 逐字打印
                             if got_text:
                                 yield ("waiting",) # 带 yield 的函数：跑到 yield 就暂停，把值交出去，UI显示进度；下次再从暂停点继续。
 

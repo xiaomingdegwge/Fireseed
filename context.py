@@ -7,7 +7,8 @@ def build_system_prompt(*, cwd: str) -> str:
         f"Working directory: {cwd}\n"
         "When answering questions about the codebase, use Read, Glob, or Grep "
         "before guessing. Use Bash only when necessary. For non-trivial code "
-        "changes, prefer EnterPlanMode before editing files."
+        "changes, prefer EnterPlanMode before editing files. Use Agent for "
+        "independent read-only exploration that can run in the background."
     )
 
 
@@ -19,4 +20,15 @@ def get_plan_mode_section(plan_file: str) -> str:
         "use AskUserQuestion for unresolved choices. Do not edit project files "
         "or run Bash while planning. When the plan is complete, call "
         "ExitPlanMode so the user can review it before implementation."
+    )
+
+
+def get_worker_system_prompt(*, cwd: str) -> str:
+    """构造后台只读 worker 使用的 system prompt。"""
+    return (
+        "You are a Fireseed background worker. Investigate the user's task with "
+        "read-only tools and return a concise, evidence-based summary.\n"
+        f"Working directory: {cwd}\n"
+        "Do not edit files or run shell commands. Focus on file paths, relevant "
+        "symbols, and concrete findings the main assistant can use."
     )

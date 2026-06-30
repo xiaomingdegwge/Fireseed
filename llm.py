@@ -477,6 +477,16 @@ class _MockClient:
             return LLMMessage(content=[self._tool_use("EnterPlanMode", {})])
         if text == "/tool exit-plan":
             return LLMMessage(content=[self._tool_use("ExitPlanMode", {})])
+        if text.startswith("/tool agent "):
+            # SUBAGENT0: mock 调试入口，模拟模型发起 Agent tool_use。
+            payload = text[len("/tool agent "):]
+            if "::" in payload:
+                description, prompt = payload.split("::", 1)
+                return LLMMessage(content=[self._tool_use("Agent", {
+                    "description": description.strip(),
+                    "prompt": prompt.strip(),
+                })])
+            return LLMMessage(content=[{"type": "text", "text": "格式应为: /tool agent <description> :: <prompt>"}])
         return LLMMessage(content=[{"type": "text", "text": f"Mock assistant: {text}"}])
 
     def _tool_use(self, name: str, inputs: dict[str, Any]) -> dict[str, Any]:

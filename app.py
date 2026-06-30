@@ -8,7 +8,7 @@ from pathlib import Path
 from commands import CommandContext, handle_command, parse_command
 from compact import CompactService, estimate_tokens, should_compact
 from config import load_app_config
-from context import build_system_prompt
+from context import build_system_prompt, get_worker_system_prompt
 from cost_tracker import CostTracker
 from engine import AbortedError, Engine
 from input_ui import build_prompt_session, has_prompt_toolkit, read_user_input
@@ -19,6 +19,7 @@ from session import SessionStore
 from skills import build_skills_prompt_section, discover_skills
 from skills_bundled import register_bundled_skills
 from tools import (
+    AgentTool,
     AskUserQuestionTool,
     BashTool,
     EditTool,
@@ -29,6 +30,7 @@ from tools import (
     ReadTool,
     WriteTool,
 )
+from worker_manager import WorkerManager
 
 try:
     from rich.console import Console  # type: ignore[import-not-found]
@@ -52,6 +54,9 @@ def _tool_preview(tool_name: str, tool_input: dict) -> str:
         return fp[-60:] if len(fp) > 60 else fp
     if tool_name in ("Glob", "Grep"):
         return str(tool_input.get("pattern", ""))
+    if tool_name == "Agent":
+        description = tool_input.get("description", "")
+        return str(description)[:60]
     if tool_name == "AskUserQuestion":
         questions = tool_input.get("questions") or []
         if questions:
@@ -313,6 +318,44 @@ def _maybe_auto_compact(
     else:
         print(f"[auto-compact] {message}")
 
+#获取子agent的结果，回灌给主agent
+def _drain_worker_notifications(
+    worker_manager: WorkerManager,
+    engine: Engine,
+    permissions: PermissionChecker,
+    *,
+    use_rich: bool,
+) -> None:
+    """排空 worker 完成通知，并把通知作为新输入回灌主 Engine。"""
+    # SUBAGENT7: 主线程拿到 <worker_result>，通过 run_query 回灌给主模型。
+    for notification in worker_manager.drain_notifications(): #循环，后台可能同时跑着多个 subagent：
+        if _HAS_RICH and use_rich:
+            Console(highlight=False).print("[dim]Background worker finished.[/dim]")
+        else:
+            print("[worker] background worker finished")
+        # worker 结果不直接塞进 messages，而是走一次普通 run_query。
+        # 这样主模型可以读取 <worker_result> 并自然地产生总结/下一步动作。输入notification
+        run_query(
+            engine,
+            notification,
+            print_mode=False,
+            permissions=permissions,
+            use_rich=use_rich,
+            use_esc=True,
+        )
+
+
+def _print_worker_status(worker_manager: WorkerManager) -> None:
+    """打印当前运行中的 worker 状态，供用户在输入前了解后台进度。"""
+    # SUBAGENT7A: 回到用户输入前，显示后台 worker 当前活动。
+    # 在提示用户输入前显示后台任务状态，避免 worker 静默运行让人误以为卡住。
+    for status in worker_manager.get_running_status():
+        activity = status["activity"] or "working"
+        print(
+            f"[worker] {status['task_id']} {status['description']} "
+            f"({status['tool_uses']} tool uses, {activity})"
+        )
+
 
 class _null_context:
     def __enter__(self):
@@ -364,12 +407,36 @@ def main() -> None:
     skills_prompt = build_skills_prompt_section()
     if skills_prompt:
         system_prompt += "\n" + skills_prompt
+
+    #重要，构建subagent 对象实例
+    def build_worker_engine() -> Engine:
+        """构造只读 worker Engine，供 Agent 后台任务独立使用。"""
+        # SUBAGENT1A: 每个后台任务都新建一个只读 Engine。
+        # worker 是只读 sub-agent：复用 Engine，但只给 Read/Glob/Grep。
+        # 这保证 Agent 可以并行探索代码，而不会绕过主会话的写入权限。
+        worker_permissions = PermissionChecker(auto_approve=True)
+        return Engine(
+            tools=[ReadTool(), GlobTool(), GrepTool()],
+            system_prompt=get_worker_system_prompt(cwd=cwd),
+            permission_checker=worker_permissions,
+            provider=cfg.provider,
+            api_key=cfg.api_key,
+            base_url=cfg.base_url,
+            model=cfg.model,
+            max_tokens=cfg.max_tokens,
+            effort=cfg.effort,
+        )
+    
+    worker_manager = WorkerManager(build_worker_engine)
+    # SUBAGENT1B: 主 Engine 注册 AgentTool，模型之后才能通过 tool_use 启动 worker。
     tools = [
         ReadTool(),
         EditTool(),
         WriteTool(),
         GlobTool(),
         GrepTool(),
+        # Agent 启动后台只读 worker；结果稍后通过 <worker_result> 回到主会话。
+        AgentTool(worker_manager),
         AskUserQuestionTool(),
         EnterPlanModeTool(plan_manager),
         ExitPlanModeTool(plan_manager),
@@ -438,6 +505,14 @@ def main() -> None:
             use_rich=False,
             use_esc=False,
         )
+        # SUBAGENT8: one-shot 模式没有后续 REPL 循环，所以这里等待并回灌 worker 结果。
+        worker_manager.wait_for_all(timeout=30)
+        _drain_worker_notifications(
+            worker_manager,
+            engine,
+            permissions,
+            use_rich=False,
+        )
         return
 
     print(
@@ -454,6 +529,14 @@ def main() -> None:
     prompt_session = build_prompt_session()
 
     while True:
+        # SUBAGENT7B: 每次提示用户前先处理已完成 worker，确保结果及时进入主会话。
+        _drain_worker_notifications(
+            worker_manager,
+            engine,
+            permissions,
+            use_rich=use_rich,
+        )
+        _print_worker_status(worker_manager)
         # MAMBA2: REPL entry. Each normal user input flows into run_query(),
         # then Engine.submit() drives the agent/tool loop.
         try:
@@ -507,6 +590,13 @@ def main() -> None:
             session_store,
             cost_tracker,
             model=cfg.model,
+            use_rich=use_rich,
+        )
+        # SUBAGENT7C: 主轮次结束后再 drain 一次，处理刚完成的后台任务。
+        _drain_worker_notifications(
+            worker_manager,
+            engine,
+            permissions,
             use_rich=use_rich,
         )
 

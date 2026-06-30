@@ -42,6 +42,7 @@ py-modules = [
     "session_viewer",
     "skills",
     "skills_bundled",
+    "worker_manager",
 ]
 packages = ["tools", "sandbox"]
 
