@@ -22,7 +22,7 @@ preserving the original learning-oriented commit history.
 - `build_system_prompt` with working directory
 - `/help`, `/clear`, `/sessions`, `/history`, `/resume`, `/compact`, and `/cost` slash commands
 - Skills: `/skills`, `/review`, `/commit`, `/test`, `/simplify`, plus `.fireseed/skills/*/SKILL.md`
-- Agent worker: read-only background exploration via `Agent`
+- Agent worker: read-only background exploration via `Agent`, `SendMessage`, and `TaskStop`
 - `Glob` tool (read-only, can run in parallel with other read-only tools)
 
 Design notes for recently migrated features are in `docs/feature-design-notes.md`.
@@ -210,6 +210,8 @@ In `--provider mock`, the model uses simple prefixes in user input:
 - `/tool plan`
 - `/tool exit-plan`
 - `/tool agent <description> :: <prompt>`
+- `/tool send <task-id> :: <message>`
+- `/tool stop <task-id>`
 
 Example:
 
@@ -224,6 +226,8 @@ The engine will emit tool events, execute the tool, feed `tool_result` back to t
 `/tool plan` and `/tool exit-plan` check the Plan Mode flow in mock mode. Real models can call `EnterPlanMode` before larger edits, write the plan file, then call `ExitPlanMode`.
 
 `/tool agent` starts a read-only background worker. The worker result is returned to the main conversation as a `<worker_result>` notification.
+
+`/tool send` continues an idle worker with a follow-up message, and `/tool stop` requests cancellation of a running worker.
 
 ## Additional REPL Commands
 

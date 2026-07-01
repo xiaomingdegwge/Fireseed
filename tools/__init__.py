@@ -1,5 +1,5 @@
 from .base import Tool, ToolResult
-from .agent import AgentTool
+from .agent import AgentTool, SendMessageTool, TaskStopTool
 from .ask_user import AskUserQuestionTool
 from .bash import BashTool
 from .edit import EditTool
@@ -13,6 +13,8 @@ __all__ = [
     "Tool",
     "ToolResult",
     "AgentTool",
+    "SendMessageTool",
+    "TaskStopTool",
     "AskUserQuestionTool",
     "ReadTool",
     "EditTool",

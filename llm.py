@@ -487,6 +487,20 @@ class _MockClient:
                     "prompt": prompt.strip(),
                 })])
             return LLMMessage(content=[{"type": "text", "text": "格式应为: /tool agent <description> :: <prompt>"}])
+        if text.startswith("/tool send "):
+            # SUBAGENT9B: mock 调试入口，模拟模型继续已有 worker。
+            payload = text[len("/tool send "):]
+            if "::" in payload:
+                task_id, message = payload.split("::", 1)
+                return LLMMessage(content=[self._tool_use("SendMessage", {
+                    "task_id": task_id.strip(),
+                    "message": message.strip(),
+                })])
+            return LLMMessage(content=[{"type": "text", "text": "格式应为: /tool send <task_id> :: <message>"}])
+        if text.startswith("/tool stop "):
+            # SUBAGENT10B: mock 调试入口，模拟模型停止运行中的 worker。
+            task_id = text[len("/tool stop "):].strip()
+            return LLMMessage(content=[self._tool_use("TaskStop", {"task_id": task_id})])
         return LLMMessage(content=[{"type": "text", "text": f"Mock assistant: {text}"}])
 
     def _tool_use(self, name: str, inputs: dict[str, Any]) -> dict[str, Any]:

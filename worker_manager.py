@@ -69,6 +69,45 @@ class WorkerManager:
         thread.start()
         return task
 
+    def continue_task(self, *, task_id: str, message: str) -> WorkerTask | None:
+        """继续一个已结束或空闲的 worker，用同一个 Engine 追加一轮任务。"""
+        # SUBAGENT9: SendMessageTool 复用 worker Engine 的历史上下文继续追问。
+        message = message.strip()
+        if not message:
+            return None
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if task is None or task.status in {"queued", "running"}:
+                return None
+            task.prompt = message
+            task.result = ""
+            task.error = None
+            task.current_activity = None
+            task.started_at = time.monotonic()
+            task.completed_at = None
+            task.status = "queued"
+            thread = threading.Thread(
+                target=self._run_task,
+                args=(task,),
+                name=f"fireseed-{task.task_id}-continue",
+                daemon=True,
+            )
+            task.thread = thread
+        thread.start()
+        return task
+
+    def stop_task(self, task_id: str) -> bool:
+        """请求停止一个正在运行的 worker，返回是否找到可停止任务。"""
+        # SUBAGENT10: TaskStopTool 通过 worker Engine.abort() 请求取消后台任务。
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if task is None or task.status != "running":
+                return False
+            task.status = "stopping"
+            task.error = "Stopped by TaskStop."
+            task.engine.abort()
+            return True
+
     def drain_notifications(self) -> list[str]:
         """排空通知队列，返回所有未处理的完成通知。"""
         # SUBAGENT6: app.py 在 REPL 前后 drain 通知，准备回灌主会话。
@@ -89,7 +128,7 @@ class WorkerManager:
             tasks = list(self._tasks.values())
         statuses = []
         for task in tasks:
-            if task.status != "running":
+            if task.status not in {"running", "stopping"}:
                 continue
             statuses.append(
                 {
@@ -104,7 +143,7 @@ class WorkerManager:
     def has_running_tasks(self) -> bool:
         """判断当前是否还有排队或运行中的 worker。"""
         with self._lock:
-            return any(task.status in {"queued", "running"} for task in self._tasks.values())
+            return any(task.status in {"queued", "running", "stopping"} for task in self._tasks.values())
 
     def wait_for_all(self, timeout: float | None = None) -> None:
         """等待所有 worker 结束，主要用于 one-shot 调试和测试。"""
@@ -150,10 +189,13 @@ class WorkerManager:
             task.result = "".join(text_parts).strip()
             task.status = "failed" if task.error else "completed"
         except Exception as exc:
-            task.error = str(exc)
-            task.status = "failed"
+            if task.status != "stopping":
+                task.error = str(exc)
+                task.status = "failed"
         finally:
             task.completed_at = time.monotonic()
+            if task.status == "stopping":
+                task.status = "stopped"
             # 不管成功/失败都发通知，让主模型知道 worker 已经结束。
             self._notifications.put(self._render_notification(task))
 

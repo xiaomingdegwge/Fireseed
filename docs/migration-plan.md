@@ -97,24 +97,25 @@ Fireseed 已迁入：
 
 - [x] WorkerManager 最小后台任务框架
 - [x] Agent 工具：派发只读后台探索任务
+- [x] SendMessage / TaskStop：继续或停止 worker
 - Coordinator mode
-- SendMessage / TaskStop
 - KAIROS Memory
 - Buddy companion
 
 ## 下一步建议
 
-Plan Mode 和 Agent 最小后台 worker 已迁入，下一步优先补齐 **Coordinator / Sub-agent 多轮管理能力**。
+Plan Mode、Agent 最小后台 worker、SendMessage/TaskStop 已迁入，下一步优先补齐 **Coordinator mode 和 session mode 记录**。
 
 原因：
 
 - Skills 和 Sandbox 已经形成可用的安全工作流
 - AskUserQuestion 和 Plan Mode 已形成“先澄清/规划，再执行”的基础工作流
 - Agent 最小版本已验证主会话派发、worker 执行、结果通知这条链路
+- SendMessage/TaskStop 已补上 worker 的继续与停止入口
 - 后续 Coordinator / Sub-agent 可以继续复用现有工具循环、权限和会话上下文
 
 建议提交粒度：
 
 1. 增加 coordinator mode 开关和 session mode 记录。
-2. 补 `SendMessage` / `TaskStop`，支持继续或停止 worker。
-3. 补 coordinator prompt 和更完整的任务状态展示。
+2. 补 coordinator prompt 和更完整的任务状态展示。
+3. 再迁入更完整的 WorkerManager 生命周期 UI。

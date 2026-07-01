@@ -11,6 +11,8 @@ from tools import (
     GlobTool,
     GrepTool,
     ReadTool,
+    SendMessageTool,
+    TaskStopTool,
     WriteTool,
 )
 from worker_manager import WorkerManager
@@ -134,6 +136,8 @@ def test_ask_user_question_multi_select() -> None:
 
 def test_tool_read_only_flags() -> None:
     assert AgentTool(WorkerManager(lambda: None)).is_read_only()
+    assert SendMessageTool(WorkerManager(lambda: None)).is_read_only()
+    assert TaskStopTool(WorkerManager(lambda: None)).is_read_only()
     assert AskUserQuestionTool().is_read_only()
     assert EnterPlanModeTool(PlanModeManager()).is_read_only()
     assert ExitPlanModeTool(PlanModeManager()).is_read_only()

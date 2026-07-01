@@ -293,6 +293,10 @@ Engine 创建完成后，再调用 `plan_manager.bind_engine(engine)`，让 mana
 
 `AgentTool.execute()` 调用 `worker_manager.spawn()`，立即返回“已启动 worker”的 tool result。`WorkerManager` 在 daemon thread 中执行 worker Engine，收集 worker 文本输出、工具调用次数和错误状态。任务结束后，`WorkerManager` 把 XML 风格的 `<worker_result>` 放入通知队列。
 
+worker 完成后会保留自己的 Engine 历史。主模型可以继续调用 `SendMessage`，由 `WorkerManager.continue_task()` 复用同一个 worker Engine 追加一轮消息。这样 worker 可以带着前一次探索上下文继续深入，而不是每次都从空白上下文重新开始。
+
+如果 worker 仍在运行，主模型可以调用 `TaskStop`。`WorkerManager.stop_task()` 会把任务标记为 `stopping` 并调用 worker Engine 的 `abort()`，worker 线程退出后会发送 `stopped` 状态的 `<worker_result>` 通知。
+
 REPL 主循环在每次读用户输入前和每轮 `run_query()` 后调用 `_drain_worker_notifications()`。该函数取出已完成通知，并再次调用 `run_query(engine, notification, ...)`，让主模型能读取 worker 结果并继续总结或行动。
 
 `--print` one-shot 模式下，为了方便 mock 调试，主查询结束后会 `wait_for_all(timeout=30)`，再 drain worker 通知。
@@ -304,10 +308,12 @@ REPL 主循环在每次读用户输入前和每轮 `run_query()` 后调用 `_dra
 - `WorkerManager._render_notification()`：把结果渲染成 `<worker_result>`。
 - `WorkerManager.drain_notifications()`：主循环拉取完成通知。
 - `AgentTool.execute()`：主模型启动后台 worker 的工具入口。
+- `SendMessageTool.execute()`：主模型继续已有 idle worker 的工具入口。
+- `TaskStopTool.execute()`：主模型请求停止运行中 worker 的工具入口。
 - `app.build_worker_engine()`：定义 worker 的只读工具集和 worker system prompt。
 - `app._drain_worker_notifications()`：把 worker 结果回灌主会话。
 - `context.get_worker_system_prompt()`：worker 专用提示词。
-- `llm.py` mock provider：`/tool agent <description> :: <prompt>` 调试入口。
+- `llm.py` mock provider：`/tool agent <description> :: <prompt>`、`/tool send <task-id> :: <message>`、`/tool stop <task-id>` 调试入口。
 
 ### 调用栈标识
 
@@ -329,14 +335,18 @@ REPL 主循环在每次读用户输入前和每轮 `run_query()` 后调用 `_dra
 14. `SUBAGENT7B`：每次提示用户前处理已完成 worker。
 15. `SUBAGENT7C`：主轮次结束后再次处理刚完成的 worker。
 16. `SUBAGENT8`：`--print` 模式等待并回灌 worker 结果。
+17. `SUBAGENT9`：`WorkerManager.continue_task()` 复用 worker Engine 继续任务。
+18. `SUBAGENT9A`：`SendMessageTool.execute()` 解析参数并继续 worker。
+19. `SUBAGENT9B`：mock provider 把 `/tool send ...` 转成 `SendMessage` tool_use。
+20. `SUBAGENT10`：`WorkerManager.stop_task()` 请求停止运行中 worker。
+21. `SUBAGENT10A`：`TaskStopTool.execute()` 解析参数并请求停止 worker。
+22. `SUBAGENT10B`：mock provider 把 `/tool stop ...` 转成 `TaskStop` tool_use。
 
 ### 当前边界
 
-当前版本只实现了“派发任务、后台执行、完成通知”的最小闭环，还没有实现：
+当前版本已实现“派发任务、后台执行、完成通知、继续 worker、停止 worker”的基础闭环，还没有实现：
 
 - coordinator mode 开关和 session mode 记录。
-- `SendMessage` 继续已有 worker。
-- `TaskStop` 停止运行中的 worker。
 - 更完整的任务面板和 worker 生命周期管理。
 
 这些应作为下一批 Coordinator / Sub-agent 能力继续迁入。

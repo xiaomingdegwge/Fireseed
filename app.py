@@ -28,6 +28,8 @@ from tools import (
     GlobTool,
     GrepTool,
     ReadTool,
+    SendMessageTool,
+    TaskStopTool,
     WriteTool,
 )
 from worker_manager import WorkerManager
@@ -57,6 +59,8 @@ def _tool_preview(tool_name: str, tool_input: dict) -> str:
     if tool_name == "Agent":
         description = tool_input.get("description", "")
         return str(description)[:60]
+    if tool_name in ("SendMessage", "TaskStop"):
+        return str(tool_input.get("task_id", ""))
     if tool_name == "AskUserQuestion":
         questions = tool_input.get("questions") or []
         if questions:
@@ -426,7 +430,7 @@ def main() -> None:
             max_tokens=cfg.max_tokens,
             effort=cfg.effort,
         )
-    
+
     worker_manager = WorkerManager(build_worker_engine)
     # SUBAGENT1B: 主 Engine 注册 AgentTool，模型之后才能通过 tool_use 启动 worker。
     tools = [
@@ -437,6 +441,8 @@ def main() -> None:
         GrepTool(),
         # Agent 启动后台只读 worker；结果稍后通过 <worker_result> 回到主会话。
         AgentTool(worker_manager),
+        SendMessageTool(worker_manager),
+        TaskStopTool(worker_manager),
         AskUserQuestionTool(),
         EnterPlanModeTool(plan_manager),
         ExitPlanModeTool(plan_manager),
